@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-11",
+  "isolated": true,
+  "results": [
+    {
+      "name": "sintaxis",
+      "exit_code": 0,
+      "seconds": 6
+    },
+    {
+      "name": "instalacion",
+      "exit_code": 0,
+      "seconds": 10
+    },
+    {
+      "name": "seguridad",
+      "exit_code": 0,
+      "seconds": 12
+    },
+    {
+      "name": "regresion",
+      "exit_code": 0,
+      "seconds": 14
+    },
+    {
+      "name": "incremento-IV",
+      "exit_code": 0,
+      "seconds": 25
+    },
+    {
+      "name": "interfaz",
+      "exit_code": 0,
+      "seconds": 85
+    }
+  ]
+}

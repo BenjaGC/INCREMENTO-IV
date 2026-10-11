@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-11",
+  "checks": [
+    "RBAC: solicitante y anónimo no administran bloqueos ni retención.",
+    "JSON inválido y solicitudes excesivas producen fallos controlados sin stack del servidor.",
+    "Inicio correcto antes del quinto intento reinicia los contadores.",
+    "Cinco errores bloquean cuenta e IP; otra cuenta y reiniciar no evaden el bloqueo.",
+    "El bloqueo temporal expira y permite reingresar sin borrar la cuenta.",
+    "Cuenta administrativa requiere desbloqueo manual con motivo auditado.",
+    "Alerta de seguridad entregada al transporte de prueba; correo real requiere SMTP institucional.",
+    "Cinco intentos simultáneos no evaden el umbral; fallar SMTP mantiene el bloqueo.",
+    "Inyección SQL y falsificación directa del encabezado de IP rechazadas.",
+    "Retención: sin política/sin antiguas no borra; comprime, verifica y retira solo tres trazas antiguas.",
+    "Fallo de respaldo conserva las trazas, registra el error y notifica al administrador.",
+    "Modo visual conserva funcionamiento cuando el navegador rechaza guardar la preferencia.",
+    "Solicitante y técnico acceden a apariencia sin permisos administrativos.",
+    "Interfaz: accesos funcionales, respaldo descargable, modo persistente, escritorio y móvil sin desbordamiento."
+  ],
+  "pageErrors": [],
+  "isolatedDatabase": true,
+  "smtp": "transporte de prueba"
+}
