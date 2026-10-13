@@ -20,7 +20,8 @@ module.exports = function () {
         throw Error('PUBLIC_ORIGIN debe usar HTTPS.');
     if (
         /^clinica_ui_test_/.test(process.env.DB_NAME) ||
-        process.env.CLINIC_TEST_PUBLIC
+        process.env.CLINIC_TEST_PUBLIC ||
+        process.env.CLINIC_INTEGRATION_TEST
     )
         throw Error(
             'No se permite usar el entorno de demostración como producción.'

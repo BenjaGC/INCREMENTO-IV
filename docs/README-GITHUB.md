@@ -4,10 +4,12 @@ Sistema de soporte informático con tickets, seguimiento SLA, inventario, report
 
 ## Descargar e instalar
 
-- [Descargar el paquete de instalación del Incremento IV](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/incremento-iv-20261011/Ticketera-Clinica-Aconcagua-Incremento-IV.zip)
-- [Ver la entrega descargable](https://github.com/BenjaGC/INCREMENTO-IV/releases/tag/incremento-iv-20261011)
-- [Paso a paso desde GitHub](docs/INSTALACION-DESDE-GITHUB.md)
-- [Guía completa de instalación y creación del administrador](docs/INSTALACION.md)
+- [Descargar el paquete revisado del Incremento IV](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/incremento-iv-20261012/Ticketera-Clinica-Aconcagua-Incremento-IV.zip)
+- [Ver la entrega descargable y sus huellas SHA-256](https://github.com/BenjaGC/INCREMENTO-IV/releases/tag/incremento-iv-20261012)
+- [Manual PDF para presentar e instalar en la clínica](Manual-presentacion-instalacion-clinica.pdf)
+- [Manual editable y guion de presentación](MANUAL-PRESENTACION-CLINICA.md)
+- [Paso a paso desde GitHub](INSTALACION-DESDE-GITHUB.md)
+- [Guía completa de instalación y creación del administrador](INSTALACION.md)
 
 El ZIP contiene la aplicación completa y las guías, preparada para una instalación propia. Cada instalador crea su base vacía, su cuenta MySQL y su administrador. No hay credenciales compartidas ni una contraseña predeterminada.
 
@@ -21,7 +23,9 @@ El código está en la raíz del repositorio; las instrucciones y los resultados
 
 Código preparado para revisión e instalación en un entorno de prueba. No incluye usuarios, contraseñas, tickets, adjuntos ni credenciales de la instalación local. La publicación de este repositorio no constituye un despliegue en la clínica.
 
-Entrega revisada el 11 de octubre de 2026. Instalación, seguridad, regresión e interfaz verificadas en bases aisladas; consultar [verificación del Incremento IV](docs/VERIFICACION-INCREMENTO-IV.md). Los servicios institucionales y el servidor de destino aún deben configurarse y comprobarse con TI.
+Entrega revisada el **12 de octubre de 2026**. Las siete suites de instalación, seguridad, regresión e interfaz terminaron correctamente en bases aisladas. Se corrigieron una caída por solicitudes malformadas y un cierre de sesión incompleto, y se reforzaron cargas de archivos, Excel, destinos externos y límites de recursos. Consultar la [revisión de seguridad y sus límites](REVISION-SEGURIDAD-20261012.md) y los [resultados finales](RESULTADOS-VERIFICACION-20261012.json). Los servicios institucionales y el servidor de destino aún deben configurarse y comprobarse con TI.
+
+El servidor escucha en `127.0.0.1` por defecto. En producción el autorregistro está cerrado, se exige HTTPS y TI debe habilitar los hosts y puertos de destinos externos. El manual contiene instrucciones para presentar desde un PC propio y para instalar una instancia central en la clínica, además de respaldo, recuperación y aceptación del piloto.
 
 ## Novedades del Incremento IV
 
@@ -31,14 +35,14 @@ Entrega revisada el 11 de octubre de 2026. Instalación, seguridad, regresión e
 
 Los accesos están integrados en Administración y en el menú de perfil, sin identificadores académicos en la interfaz. Se conservan los módulos y permisos de los incrementos anteriores.
 
-- [Funcionamiento y puesta en operación del Incremento IV](docs/INCREMENTO-IV.md)
-- [Mapa del código y mantenimiento para TI](docs/ARQUITECTURA-Y-MANTENIMIENTO.md)
+- [Funcionamiento y puesta en operación del Incremento IV](INCREMENTO-IV.md)
+- [Mapa del código y mantenimiento para TI](ARQUITECTURA-Y-MANTENIMIENTO.md)
 
-- [Instalar desde cero](docs/INSTALACION.md)
-- [Instalación y operación en la clínica](docs/DESPLIEGUE-CLINICA.md)
-- [Pruebas entre compañeros y registro de errores](docs/PRUEBAS-DEL-EQUIPO.md)
-- [Estado de pruebas y requisitos de uso real](docs/PASO-A-USO-REAL.md)
-- [Organización de la entrega académica](docs/INSTRUCCIONES-GITHUB-PARA-EL-EQUIPO.md)
+- [Instalar desde cero](INSTALACION.md)
+- [Instalación y operación en la clínica](DESPLIEGUE-CLINICA.md)
+- [Pruebas entre compañeros y registro de errores](PRUEBAS-DEL-EQUIPO.md)
+- [Estado de pruebas y requisitos de uso real](PASO-A-USO-REAL.md)
+- [Organización de la entrega académica](INSTRUCCIONES-GITHUB-PARA-EL-EQUIPO.md)
 
 ## Inicio rápido
 
@@ -55,7 +59,7 @@ Crear una base VACÍA y una cuenta MySQL dedicada, completar `.env`, y después:
 npm run db:init
 ```
 
-Antes de iniciar, seguir el apartado de migraciones de [INSTALACION.md](docs/INSTALACION.md): configurar temporalmente una cuenta MySQL autorizada y ejecutar `npm run db:migrate`. Retirar esas credenciales temporales y ejecutar `npm start`. Abrir http://localhost:3000. Seguir las instrucciones para crear el primer administrador. No hay una contraseña administrativa predeterminada.
+Antes de iniciar, seguir el apartado de migraciones de [INSTALACION.md](INSTALACION.md): configurar temporalmente una cuenta MySQL autorizada y ejecutar `npm run db:migrate`. Retirar esas credenciales temporales y ejecutar `npm start`. Abrir http://localhost:3000. Seguir las instrucciones para crear el primer administrador. No hay una contraseña administrativa predeterminada.
 
 `npm run db:init` se niega a operar si la base ya contiene tablas. Los SQL originales contienen instrucciones de recreación: no importarlos manualmente encima de una instalación existente.
 
@@ -74,7 +78,8 @@ Antes de iniciar, seguir el apartado de migraciones de [INSTALACION.md](docs/INS
 | `npm run test:regression` | Pruebas del Incremento III en base temporal. |
 | `npm run test:ui` | Recorrido de interfaz, aceptación, descargas y administración. |
 | `npm run test:increment4` | Apariencia, bloqueos, respaldo de trazas y fallos controlados en base temporal. |
-| `npm run verify:delivery` | Ejecutar las seis suites de verificación de forma secuencial. |
+| `npm run test:adversarial` | Pruebas locales acotadas de entradas malformadas, permisos, archivos y disponibilidad en base temporal. |
+| `npm run verify:delivery` | Ejecutar las siete suites de verificación de forma secuencial. |
 | `npm run account:unlock -- RUT "Motivo"` | Desbloqueo por TI desde terminal, con motivo auditado. |
 
 Las pruebas necesitan dependencias de desarrollo, `npx playwright install chromium`, acceso a MySQL con permisos para crear/eliminar bases de prueba y puerto 3200 libre. Ejecutarlas una por una en un entorno separado. Los envíos de correo de estas pruebas son simulados y no certifican recepción SMTP real.
@@ -99,10 +104,10 @@ No subir `.env`, respaldos con usuarios, archivos privados ni contraseñas. Las 
 
 Las seis suites de verificación local terminaron correctamente. También se instaló el paquete limpio con una cuenta MySQL dedicada y se comprobó el servidor normal, el acceso administrativo y el cambio obligatorio de contraseña.
 
-- [Resultados de las seis suites](docs/verificacion/RESULTADOS.json)
-- [Comprobación del paquete de instalación](docs/verificacion/INSTALACION-PAQUETE.json)
-- [Casos verificados del Incremento IV](docs/verificacion/CASOS-INCREMENTO-IV.json)
-- [Alcance, correcciones y comprobaciones pendientes en la clínica](docs/VERIFICACION-INCREMENTO-IV.md)
+- [Resultados de las seis suites](verificacion/RESULTADOS.json)
+- [Comprobación del paquete de instalación](verificacion/INSTALACION-PAQUETE.json)
+- [Casos verificados del Incremento IV](verificacion/CASOS-INCREMENTO-IV.json)
+- [Alcance, correcciones y comprobaciones pendientes en la clínica](VERIFICACION-INCREMENTO-IV.md)
 
 Este repositorio contiene la entrega de software e instalación. Las capturas compartidas con compañeros no forman parte de esta publicación.
 

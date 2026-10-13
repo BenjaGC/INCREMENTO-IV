@@ -7,10 +7,12 @@ const XLSX = require('xlsx');
 const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const archiver = require('archiver');
-const https = require('https');
-const http = require('http');
+const fileSafety = require('./file-safety');
+const registrationPolicy = require('./registration-policy');
 
 const app = express();
+const httpSecurity = require('./http-security');
+httpSecurity.install(app);
 if (process.env.TRUST_PROXY_HOPS)
     app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS));
 const PORT = Number(process.env.PORT || 3000);
@@ -92,6 +94,9 @@ const pool = require('./config/database');
 // ==========================================
 const transporter = require('./config/mail');
 
+app.get('/public-policy', (req, res) =>
+    res.json({ registrationEnabled: registrationPolicy.enabled() })
+);
 app.get('/health/live', (req, res) => res.json({ status: 'ok' }));
 app.get('/health/ready', async (req, res) => {
     try {
@@ -103,6 +108,7 @@ app.get('/health/ready', async (req, res) => {
     }
 });
 app.use(express.json({ limit: '256kb' }));
+app.use(httpSecurity.validate);
 require('./access-control')(app, pool);
 require('./password-recovery')(app, { pool, transporter });
 const inc3 = require('./increment3')(app, {
@@ -373,6 +379,7 @@ function estaDentroDeHorario(horaInicio, horaFin) {
 // Reintenta enviar los correos que quedaron encolados fuera del horario operativo
 let procesandoCorreos = false;
 async function procesarColaCorreos() {
+    if (transporter.configured === false) return;
     if (procesandoCorreos) return 0;
     procesandoCorreos = true;
     try {
@@ -445,6 +452,25 @@ async function enviarCorreoOperativo(destinatario, asunto, html) {
 // ==========================================
 // FUNCIONES DE EMAIL
 // ==========================================
+function escapeEmailFields(data) {
+    const escaped = {};
+    for (const [key, value] of Object.entries(data))
+        escaped[key] =
+            typeof value === 'string'
+                ? value.replace(
+                      /[&<>"']/g,
+                      (c) =>
+                          ({
+                              '&': '&amp;',
+                              '<': '&lt;',
+                              '>': '&gt;',
+                              '"': '&quot;',
+                              "'": '&#39;'
+                          })[c]
+                  )
+                : value;
+    return escaped;
+}
 async function enviarAvisoNuevoTicket(destinatario, asunto, html) {
     try {
         await pool.query(
@@ -460,6 +486,7 @@ async function enviarAvisoNuevoTicket(destinatario, asunto, html) {
     }
 }
 function enviarEmailNuevoTicket(destinatarios, ticketData) {
+    ticketData = escapeEmailFields(ticketData);
     if (!destinatarios || destinatarios.trim() === '') return;
 
     const {
@@ -539,6 +566,7 @@ function enviarEmailNuevoTicket(destinatarios, ticketData) {
 }
 
 function enviarEmailTicketResuelto(destinatario, ticketData) {
+    ticketData = escapeEmailFields(ticketData);
     if (
         !destinatario ||
         destinatario.trim() === '' ||
@@ -617,6 +645,7 @@ function enviarEmailTicketResuelto(destinatario, ticketData) {
 
 // ── RF-18: Notificación al técnico cuando un ticket es reabierto ──
 function enviarEmailTicketReabierto(destinatario, ticketData) {
+    ticketData = escapeEmailFields(ticketData);
     if (
         !destinatario ||
         destinatario.trim() === '' ||
@@ -677,6 +706,7 @@ function enviarEmailTicketReabierto(destinatario, ticketData) {
 }
 
 function enviarNotificacionAdminDerivado(destinatario, ticketData) {
+    ticketData = escapeEmailFields(ticketData);
     if (
         !destinatario ||
         destinatario.trim() === '' ||
@@ -760,6 +790,12 @@ function enviarNotificacionAdminDerivado(destinatario, ticketData) {
 // ==========================================
 
 app.post('/registro', async (req, res) => {
+    if (!registrationPolicy.enabled())
+        return res
+            .status(403)
+            .json({
+                error: 'El alta de usuarios debe solicitarse al administrador de la clínica.'
+            });
     const { nombre, rut, correo, password } = req.body;
     if (
         typeof nombre !== 'string' ||
@@ -772,11 +808,9 @@ app.post('/registro', async (req, res) => {
         !/^\S+@\S+\.\S+$/.test(correo) ||
         correo.length > 150
     )
-        return res
-            .status(400)
-            .json({
-                error: 'Revisa nombre, correo y contraseña (mínimo 8 caracteres).'
-            });
+        return res.status(400).json({
+            error: 'Revisa nombre, correo y contraseña (mínimo 8 caracteres).'
+        });
 
     // Validación módulo 11 (backend) — nunca confiar solo en el frontend
     if (!validarRutModulo11(rut)) {
@@ -873,18 +907,17 @@ app.post('/sesion/verificar', async (req, res) => {
 });
 
 app.post('/sesion/cerrar', async (req, res) => {
-    const { rut, token } = req.body;
-    if (!rut || !token) return res.json({ success: true });
-
     try {
         await pool.query(
-            'UPDATE user SET session_token = NULL WHERE rut = ? AND session_token = ?',
-            [rut, token]
+            'UPDATE user SET session_token = NULL WHERE user_id = ? AND session_token = ?',
+            [req.security.user.user_id, req.security.user.session_token]
         );
         res.json({ success: true });
     } catch (error) {
         console.error('ERROR CERRANDO SESION:', error);
-        res.json({ success: true });
+        res.status(503).json({
+            error: 'No se pudo confirmar el cierre. Reintenta cuando se restablezca el servicio.'
+        });
     }
 });
 
@@ -1092,11 +1125,11 @@ app.get('/estadisticas', async (req, res) => {
             LEFT JOIN user u ON t.requester_user_id = u.user_id
         `);
 
-        const porAparato = {};
-        const porCreador = {};
-        const porEstado = {};
-        const porPiso = {};
-        const porSemana = {};
+        const porAparato = Object.create(null);
+        const porCreador = Object.create(null);
+        const porEstado = Object.create(null);
+        const porPiso = Object.create(null);
+        const porSemana = Object.create(null);
 
         const estadoNormalizar = (e) =>
             e === 'Cerrado' ? 'Resuelto' : e || 'En curso';
@@ -1219,11 +1252,9 @@ app.post('/incidente', async (req, res) => {
 
     // ── Validación: la descripción no puede tener menos de 10 caracteres ──
     if (!descripcion || descripcion.trim().length < 10) {
-        return res
-            .status(400)
-            .json({
-                error: 'La descripción debe tener al menos 10 caracteres.'
-            });
+        return res.status(400).json({
+            error: 'La descripción debe tener al menos 10 caracteres.'
+        });
     }
 
     try {
@@ -1242,11 +1273,9 @@ app.post('/incidente', async (req, res) => {
             ubicacionRequerida &&
             (!piso || !piso.trim() || !habitacion || !habitacion.trim())
         ) {
-            return res
-                .status(400)
-                .json({
-                    error: 'La ubicación (piso y habitación) es obligatoria para crear el ticket.'
-                });
+            return res.status(400).json({
+                error: 'La ubicación (piso y habitación) es obligatoria para crear el ticket.'
+            });
         }
 
         // ── RF-23: el nombre del activo es obligatorio solo para categorías Hardware (1) o Red (5) ──
@@ -1254,20 +1283,16 @@ app.post('/incidente', async (req, res) => {
             (categoryId === 1 || categoryId === 5) &&
             (!nombreActivo || !nombreActivo.trim())
         ) {
-            return res
-                .status(400)
-                .json({
-                    error: 'Debes indicar el nombre del activo/equipo para esta categoría.'
-                });
+            return res.status(400).json({
+                error: 'Debes indicar el nombre del activo/equipo para esta categoría.'
+            });
         }
 
         const users = [{ user_id: req.actor.user_id }];
         if (!users.length)
-            return res
-                .status(400)
-                .json({
-                    error: 'No se encontró el solicitante. Vuelve a iniciar sesión.'
-                });
+            return res.status(400).json({
+                error: 'No se encontró el solicitante. Vuelve a iniciar sesión.'
+            });
         const userId = users[0].user_id;
 
         // ── RF-23: se busca el activo en la base histórica; si no existe, se crea (estandariza nomenclatura) ──
@@ -1383,7 +1408,11 @@ app.post('/incidente', async (req, res) => {
 
         res.json({
             success: true,
-            message: `¡Ticket ${ticketCode} generado con éxito! Asignado a: ${tecnicoNombre}`
+            message:
+                `¡Ticket ${ticketCode} generado con éxito! Asignado a: ${tecnicoNombre}` +
+                (transporter.configured === false
+                    ? '. El aviso por correo queda pendiente de configurar SMTP.'
+                    : '')
         });
     } catch (error) {
         console.error(error);
@@ -1397,23 +1426,25 @@ app.post('/incidente', async (req, res) => {
 const uploadMiddleware = (req, res, cb) =>
     multer({
         storage,
-        limits: { fileSize: inc3.config.upload_mb * 1024 * 1024 }
+        limits: fileSafety.limits(inc3.config.upload_mb)
     }).single('archivo')(req, res, cb);
 
 app.post('/incidente/comentar', (req, res) => {
     uploadMiddleware(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
             if (err.code === 'LIMIT_FILE_SIZE') {
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            'El archivo excede el límite de ' +
-                            inc3.config.upload_mb +
-                            ' MB.'
-                    });
+                return res.status(400).json({
+                    error:
+                        'El archivo excede el límite de ' +
+                        inc3.config.upload_mb +
+                        ' MB.'
+                });
             }
-            return res.status(500).json({ error: err.message });
+            return res
+                .status(400)
+                .json({
+                    error: 'La carga contiene demasiados archivos o campos.'
+                });
         } else if (err) {
             return res
                 .status(500)
@@ -1425,12 +1456,20 @@ app.post('/incidente/comentar', (req, res) => {
         const file = req.file;
 
         try {
+            try {
+                fileSafety.validate(file);
+            } catch (error) {
+                fileSafety.remove(file);
+                return res.status(400).json({ error: error.message });
+            }
             const [tickets] = await pool.query(
                 'SELECT ticket_id, requester_user_id,assigned_user_id,is_archived FROM ticket WHERE ticket_code = ?',
                 [id_ticket]
             );
-            if (tickets.length === 0)
+            if (tickets.length === 0) {
+                fileSafety.remove(file);
                 return res.status(404).json({ error: 'Ticket no encontrado' });
+            }
             if (
                 tickets[0].is_archived ||
                 (!req.actor.admin &&
@@ -1498,6 +1537,15 @@ app.post('/incidente/comentar', (req, res) => {
 
             res.json({ success: true, comentarios: comments });
         } catch (error) {
+            if (file) {
+                const [[persisted]] = await pool
+                    .query(
+                        'SELECT COUNT(*) n FROM attachment WHERE file_path=?',
+                        ['/uploads/' + file.filename]
+                    )
+                    .catch(() => [[{ n: 1 }]]);
+                if (!persisted.n) fileSafety.remove(file);
+            }
             console.error(error);
             res.status(500).json({ error: 'Error procesando comentario' });
         }
@@ -2015,11 +2063,9 @@ app.put('/tecnicos/:id/critico', async (req, res) => {
         Number(id) < 1 ||
         typeof critico !== 'boolean'
     )
-        return res
-            .status(400)
-            .json({
-                error: 'Indica un técnico válido y un estado verdadero o falso.'
-            });
+        return res.status(400).json({
+            error: 'Indica un técnico válido y un estado verdadero o falso.'
+        });
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -2257,7 +2303,15 @@ app.post('/reportes/exportar', async (req, res) => {
             filasProcesadas.forEach((f) => {
                 csv +=
                     encabezados
-                        .map((h) => `"${String(f[h]).replace(/"/g, '""')}"`)
+                        .map((h) => {
+                            const text = String(f[h] ?? '');
+                            const safe =
+                                typeof f[h] === 'string' &&
+                                /^[=+@-]/.test(text.trimStart())
+                                    ? "'" + text
+                                    : text;
+                            return `"${safe.replace(/"/g, '""')}"`;
+                        })
                         .join(';') + '\n';
             });
             await pool.query(
@@ -2378,11 +2432,9 @@ app.post('/incidente/nota-privada', async (req, res) => {
 
         // El sistema valida los privilegios del rol activo (Técnico o Administrador)
         if (!req.security.soporte) {
-            return res
-                .status(403)
-                .json({
-                    error: 'Solo técnicos o administradores pueden registrar notas técnicas privadas.'
-                });
+            return res.status(403).json({
+                error: 'Solo técnicos o administradores pueden registrar notas técnicas privadas.'
+            });
         }
         const userId = req.actor.user_id;
 
@@ -2423,11 +2475,9 @@ app.post('/incidente/reabrir', async (req, res) => {
 
     // El sistema valida que el texto tenga al menos 10 caracteres
     if (!justificacion || justificacion.trim().length < 10) {
-        return res
-            .status(400)
-            .json({
-                error: 'La justificación debe tener al menos 10 caracteres.'
-            });
+        return res.status(400).json({
+            error: 'La justificación debe tener al menos 10 caracteres.'
+        });
     }
 
     try {
@@ -2448,18 +2498,14 @@ app.post('/incidente/reabrir', async (req, res) => {
         const ticket = tickets[0];
 
         if (![3, 4, 6].includes(ticket.status_id)) {
-            return res
-                .status(400)
-                .json({
-                    error: 'Solo se pueden reabrir tickets Resueltos o Cerrados.'
-                });
+            return res.status(400).json({
+                error: 'Solo se pueden reabrir tickets Resueltos o Cerrados.'
+            });
         }
         if (ticket.requester_user_id !== req.actor.user_id) {
-            return res
-                .status(403)
-                .json({
-                    error: 'Solo el usuario solicitante puede reabrir este ticket.'
-                });
+            return res.status(403).json({
+                error: 'Solo el usuario solicitante puede reabrir este ticket.'
+            });
         }
 
         // Excepción: Límite alcanzado → el sistema bloquea el botón y sugiere ticket nuevo
@@ -2552,11 +2598,9 @@ app.put('/horario-operativo', async (req, res) => {
         !formatoValido.test(hora_inicio) ||
         !formatoValido.test(hora_fin)
     ) {
-        return res
-            .status(400)
-            .json({
-                error: 'El rango horario debe tener formato HH:mm válido (00:00 a 23:59).'
-            });
+        return res.status(400).json({
+            error: 'El rango horario debe tener formato HH:mm válido (00:00 a 23:59).'
+        });
     }
 
     try {
@@ -2601,11 +2645,9 @@ app.post('/incidente/ajustar-prioridad', async (req, res) => {
 
     // Excepción: Justificación vacía → el sistema bloquea la transacción
     if (!justificacion || justificacion.trim().length < 10) {
-        return res
-            .status(400)
-            .json({
-                error: 'La justificación técnica debe tener al menos 10 caracteres.'
-            });
+        return res.status(400).json({
+            error: 'La justificación técnica debe tener al menos 10 caracteres.'
+        });
     }
     if (!priority_id) {
         return res
@@ -2624,20 +2666,16 @@ app.post('/incidente/ajustar-prioridad', async (req, res) => {
 
         // Precondición: el ticket debe estar en estado "Pendiente" (5) o "En Proceso" (1)
         if (![1, 5].includes(ticket.status_id)) {
-            return res
-                .status(400)
-                .json({
-                    error: 'Solo se puede ajustar la prioridad de tickets Pendientes o En Proceso.'
-                });
+            return res.status(400).json({
+                error: 'Solo se puede ajustar la prioridad de tickets Pendientes o En Proceso.'
+            });
         }
 
         // El técnico debe tener rol activo de Técnico (role_id = 1) o Admin
         if (!req.security.soporte) {
-            return res
-                .status(403)
-                .json({
-                    error: 'Solo un técnico o administrador puede ajustar la prioridad.'
-                });
+            return res.status(403).json({
+                error: 'Solo un técnico o administrador puede ajustar la prioridad.'
+            });
         }
         const userId = req.actor.user_id;
 
@@ -2758,11 +2796,9 @@ app.post('/incidente/materiales', async (req, res) => {
         !Number.isFinite(Number(costo_unitario)) ||
         Number(costo_unitario) < 0
     ) {
-        return res
-            .status(400)
-            .json({
-                error: 'Debes indicar un insumo, cantidad y costo unitario válidos.'
-            });
+        return res.status(400).json({
+            error: 'Debes indicar un insumo, cantidad y costo unitario válidos.'
+        });
     }
 
     const materialConnection = await pool.getConnection();
@@ -2778,19 +2814,15 @@ app.post('/incidente/materiales', async (req, res) => {
 
         // Precondición: el ticket debe estar en estado "En Proceso" (status_id = 1)
         if (ticket.status_id !== 1) {
-            return res
-                .status(400)
-                .json({
-                    error: 'Solo se pueden imputar materiales a tickets En Proceso.'
-                });
+            return res.status(400).json({
+                error: 'Solo se pueden imputar materiales a tickets En Proceso.'
+            });
         }
 
         if (!req.security.soporte) {
-            return res
-                .status(403)
-                .json({
-                    error: 'Solo un técnico o administrador puede imputar materiales.'
-                });
+            return res.status(403).json({
+                error: 'Solo un técnico o administrador puede imputar materiales.'
+            });
         }
         const userId = req.actor.user_id;
 
@@ -2955,11 +2987,9 @@ app.post('/reportes/materiales/exportar', async (req, res) => {
     try {
         // Solo el Administrador del sistema puede exportar este reporte
         if (!req.security.admin) {
-            return res
-                .status(403)
-                .json({
-                    error: 'Solo un administrador puede exportar este reporte.'
-                });
+            return res.status(403).json({
+                error: 'Solo un administrador puede exportar este reporte.'
+            });
         }
 
         let where = 'WHERE 1=1';
@@ -3477,7 +3507,7 @@ async function cerrarTicketsInactivos() {
                         from: process.env.MAIL_FROM || process.env.MAIL_USER,
                         to: t.creador_email,
                         subject: `🔒 Tu ticket ${t.ticket_code} fue cerrado automáticamente`,
-                        html: `<p>Hola ${t.creador}, tu ticket <strong>${t.ticket_code}</strong> fue cerrado automáticamente por falta de respuesta durante 7 días. Si el problema persiste, puedes reabrirlo o generar uno nuevo.</p>`
+                        html: `<p>Hola ${escapeEmailFields(t).creador}, tu ticket <strong>${escapeEmailFields(t).ticket_code}</strong> fue cerrado automáticamente por falta de respuesta durante 7 días. Si el problema persiste, puedes reabrirlo o generar uno nuevo.</p>`
                     },
                     (error) => {
                         if (error)
@@ -3591,6 +3621,15 @@ app.put('/configuracion-externa', async (req, res) => {
             .json({ error: 'La URL debe comenzar con http:// o https://' });
     }
     try {
+        if (external_endpoint_url) {
+            try {
+                require('./external-connection').validate(
+                    external_endpoint_url
+                );
+            } catch (error) {
+                return res.status(400).json({ error: error.message });
+            }
+        }
         await pool.query(
             'UPDATE system_config SET external_endpoint_url = ? WHERE config_id = 1',
             [external_endpoint_url || null]
@@ -3607,37 +3646,6 @@ app.put('/configuracion-externa', async (req, res) => {
     }
 });
 
-// El sistema detecta un intento de contacto externo y mide el tiempo de respuesta
-function probarConexionExterna(url) {
-    return new Promise((resolve) => {
-        const inicio = Date.now();
-        const lib = url.startsWith('https') ? https : http;
-        const req = lib.get(url, { timeout: 5000 }, (resp) => {
-            resp.resume();
-            resolve({
-                exito: true,
-                tiempoMs: Date.now() - inicio,
-                statusCode: resp.statusCode
-            });
-        });
-        req.on('timeout', () => {
-            req.destroy();
-            resolve({
-                exito: false,
-                tiempoMs: Date.now() - inicio,
-                error: 'Timeout de conexión'
-            });
-        });
-        req.on('error', (err) =>
-            resolve({
-                exito: false,
-                tiempoMs: Date.now() - inicio,
-                error: err.message
-            })
-        );
-    });
-}
-
 app.post('/incidente/verificar-externo', async (req, res) => {
     const { id_ticket } = req.body;
     try {
@@ -3651,11 +3659,9 @@ app.post('/incidente/verificar-externo', async (req, res) => {
 
         // Precondición: ticket de categoría externa (6) activo
         if (ticket.category_id !== 6) {
-            return res
-                .status(400)
-                .json({
-                    error: 'Esta verificación solo aplica a tickets de categoría "Sistema Externo".'
-                });
+            return res.status(400).json({
+                error: 'Esta verificación solo aplica a tickets de categoría "Sistema Externo".'
+            });
         }
 
         const [configRows] = await pool.query(
@@ -3665,14 +3671,17 @@ app.post('/incidente/verificar-externo', async (req, res) => {
             configRows.length > 0 ? configRows[0].external_endpoint_url : null;
 
         if (!endpoint) {
-            return res
-                .status(400)
-                .json({
-                    error: 'No hay un endpoint externo configurado. Pídele al administrador que lo configure.'
-                });
+            return res.status(400).json({
+                error: 'No hay un endpoint externo configurado. Pídele al administrador que lo configure.'
+            });
         }
 
-        const resultado = await probarConexionExterna(endpoint);
+        let resultado;
+        try {
+            resultado = await require('./external-connection').probe(endpoint);
+        } catch (error) {
+            return res.status(400).json({ error: error.message });
+        }
 
         await pool.query(
             'INSERT INTO external_integration_log (ticket_id, endpoint, tiempo_respuesta_ms, exito) VALUES (?, ?, ?, ?)',
@@ -3737,18 +3746,14 @@ app.get('/incidente/:id_ticket/etiqueta-pdf', async (req, res) => {
         const ticket = tickets[0];
 
         if (ticket.status_id !== 1) {
-            return res
-                .status(400)
-                .json({
-                    error: 'Solo se puede generar la etiqueta para tickets En Proceso.'
-                });
+            return res.status(400).json({
+                error: 'Solo se puede generar la etiqueta para tickets En Proceso.'
+            });
         }
         if (!ticket.equipment_id) {
-            return res
-                .status(400)
-                .json({
-                    error: 'Este ticket no tiene un equipo identificado.'
-                });
+            return res.status(400).json({
+                error: 'Este ticket no tiene un equipo identificado.'
+            });
         }
 
         // El sistema genera un código QR con el ID del ticket
@@ -3895,11 +3900,9 @@ app.post('/incidente/reasignar', async (req, res) => {
     const { id_ticket, usuario, nuevo_tecnico_id, motivo, confirmar } =
         req.body;
     if (!req.security.admin)
-        return res
-            .status(403)
-            .json({
-                error: 'Solo un administrador puede reasignar por jefatura.'
-            });
+        return res.status(403).json({
+            error: 'Solo un administrador puede reasignar por jefatura.'
+        });
 
     if (!nuevo_tecnico_id)
         return res.status(400).json({ error: 'Debes seleccionar un técnico.' });
@@ -3922,11 +3925,9 @@ app.post('/incidente/reasignar', async (req, res) => {
         const ticket = tickets[0];
 
         if (![1, 5].includes(ticket.status_id)) {
-            return res
-                .status(400)
-                .json({
-                    error: 'Solo se pueden reasignar tickets Pendientes o En Proceso.'
-                });
+            return res.status(400).json({
+                error: 'Solo se pueden reasignar tickets Pendientes o En Proceso.'
+            });
         }
 
         // El sistema verifica que el técnico esté activo
@@ -3947,12 +3948,10 @@ app.post('/incidente/reasignar', async (req, res) => {
 
         // Excepción: Técnico no disponible (vacaciones) → advertencia antes de confirmar
         if (tecnico.en_vacaciones && !confirmar) {
-            return res
-                .status(409)
-                .json({
-                    advertencia: true,
-                    error: `${tecnico.first_name} está marcado como en vacaciones/licencia. ¿Deseas continuar de todas formas?`
-                });
+            return res.status(409).json({
+                advertencia: true,
+                error: `${tecnico.first_name} está marcado como en vacaciones/licencia. ¿Deseas continuar de todas formas?`
+            });
         }
 
         const adminId = req.actor.user_id;
@@ -3982,7 +3981,7 @@ app.post('/incidente/reasignar', async (req, res) => {
                                 process.env.MAIL_FROM || process.env.MAIL_USER,
                             to: email,
                             subject: `🔀 Reasignación de ticket ${id_ticket}`,
-                            html: `<p>El ticket <strong>${id_ticket}</strong> fue reasignado por jefatura de <strong>${ticket.tecnico_actual || 'Sin asignar'}</strong> a <strong>${tecnico.first_name}</strong>.</p><p>Motivo: ${motivo.trim()}</p>`
+                            html: `<p>El ticket <strong>${escapeEmailFields({ id_ticket }).id_ticket}</strong> fue reasignado por jefatura de <strong>${escapeEmailFields({ value: ticket.tecnico_actual || 'Sin asignar' }).value}</strong> a <strong>${escapeEmailFields(tecnico).first_name}</strong>.</p><p>Motivo: ${escapeEmailFields({ motivo: motivo.trim() }).motivo}</p>`
                         },
                         (error) => {
                             if (error)
@@ -4287,11 +4286,9 @@ app.post('/equipos', async (req, res) => {
             .json({ error: 'El nombre del equipo es obligatorio.' });
     }
     if (!piso || !habitacion || !habitacion.trim()) {
-        return res
-            .status(400)
-            .json({
-                error: 'Debes indicar el piso y la habitación/área del equipo.'
-            });
+        return res.status(400).json({
+            error: 'Debes indicar el piso y la habitación/área del equipo.'
+        });
     }
     if (!TIPOS_EQUIPO_VALIDOS.includes(equipment_type)) {
         return res
@@ -4305,11 +4302,9 @@ app.post('/equipos', async (req, res) => {
             [equipment_name.trim()]
         );
         if (existente.length > 0) {
-            return res
-                .status(400)
-                .json({
-                    error: `Ya existe un equipo registrado con el nombre "${equipment_name.trim()}".`
-                });
+            return res.status(400).json({
+                error: `Ya existe un equipo registrado con el nombre "${equipment_name.trim()}".`
+            });
         }
 
         const location = `${piso} - ${habitacion.trim()}`;
@@ -4336,11 +4331,9 @@ app.delete('/equipos/:id', async (req, res) => {
             [req.params.id]
         );
         if (usados.length > 0) {
-            return res
-                .status(400)
-                .json({
-                    error: 'No se puede eliminar: este equipo ya tiene tickets asociados.'
-                });
+            return res.status(400).json({
+                error: 'No se puede eliminar: este equipo ya tiene tickets asociados.'
+            });
         }
         await pool.query('DELETE FROM equipment WHERE equipment_id = ?', [
             req.params.id
@@ -4383,7 +4376,7 @@ app.get('/manuales', async (req, res) => {
 app.post('/manuales/subir', (req, res) => {
     multer({
         storage: storageManual,
-        limits: { fileSize: inc3.config.manual_mb * 1024 * 1024 },
+        limits: fileSafety.limits(inc3.config.manual_mb),
         fileFilter: (req, file, cb) =>
             cb(
                 file.mimetype === 'application/pdf'
@@ -4394,16 +4387,18 @@ app.post('/manuales/subir', (req, res) => {
     }).single('manual')(req, res, function (err) {
         if (err instanceof multer.MulterError) {
             if (err.code === 'LIMIT_FILE_SIZE') {
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            'El archivo excede el límite de ' +
-                            inc3.config.manual_mb +
-                            ' MB.'
-                    });
+                return res.status(400).json({
+                    error:
+                        'El archivo excede el límite de ' +
+                        inc3.config.manual_mb +
+                        ' MB.'
+                });
             }
-            return res.status(500).json({ error: err.message });
+            return res
+                .status(400)
+                .json({
+                    error: 'La carga contiene demasiados archivos o campos.'
+                });
         } else if (err) {
             return res.status(400).json({ error: err.message });
         }
@@ -4414,6 +4409,12 @@ app.post('/manuales/subir', (req, res) => {
                 .json({ error: 'No se recibió ningún archivo.' });
         }
 
+        try {
+            fileSafety.validate(req.file, true);
+        } catch (error) {
+            fileSafety.remove(req.file);
+            return res.status(400).json({ error: error.message });
+        }
         const nombreOriginal = req.file.originalname.replace(
             /[^a-zA-Z0-9._\-áéíóúÁÉÍÓÚñÑ ]/g,
             '_'
@@ -4471,28 +4472,40 @@ require('./acceptance')(app, {
 inc3.captureErrors();
 inc3.ready
     .then(() => {
-        const server = app.listen(PORT, () => {
-            inc3.startJobs();
-            inc3.increment4.traces.startScheduler();
-            console.log(`Servidor corriendo en http://localhost:${PORT}`);
+        const server = app.listen(
+            PORT,
+            process.env.CLINICA_BIND_ADDRESS || '127.0.0.1',
+            () => {
+                inc3.startJobs();
+                inc3.increment4.traces.startScheduler();
+                console.log(`Servidor corriendo en http://localhost:${PORT}`);
 
-            setInterval(procesarColaCorreos, 60 * 1000);
+                setInterval(procesarColaCorreos, 60 * 1000);
 
-            // ── RF-29: motor de monitoreo de SLA — se ejecuta cada 5 minutos ──
-            const { T_MonitoreoSLA, T_CierreAutomatico } = require('./domain');
-            const slaTask = new T_MonitoreoSLA(ejecutarMonitoreoConReintento);
-            slaTask.ejecutar();
-            setInterval(() => slaTask.ejecutar(), 5 * 60 * 1000);
+                // ── RF-29: motor de monitoreo de SLA — se ejecuta cada 5 minutos ──
+                const {
+                    T_MonitoreoSLA,
+                    T_CierreAutomatico
+                } = require('./domain');
+                const slaTask = new T_MonitoreoSLA(
+                    ejecutarMonitoreoConReintento
+                );
+                slaTask.ejecutar();
+                setInterval(() => slaTask.ejecutar(), 5 * 60 * 1000);
 
-            // ── RF-33: verifica cada hora si corresponde despachar el reporte gerencial ──
-            setInterval(verificarReportesProgramados, 60 * 60 * 1000);
+                // ── RF-33: verifica cada hora si corresponde despachar el reporte gerencial ──
+                setInterval(verificarReportesProgramados, 60 * 60 * 1000);
 
-            // ── RF-61: revisa diariamente si hay tickets Resueltos sin respuesta hace 7+ días ──
-            const closeTask = new T_CierreAutomatico(cerrarTicketsInactivos);
-            closeTask.ejecutar();
-            setInterval(() => closeTask.ejecutar(), 24 * 60 * 60 * 1000);
-        });
+                // ── RF-61: revisa diariamente si hay tickets Resueltos sin respuesta hace 7+ días ──
+                const closeTask = new T_CierreAutomatico(
+                    cerrarTicketsInactivos
+                );
+                closeTask.ejecutar();
+                setInterval(() => closeTask.ejecutar(), 24 * 60 * 60 * 1000);
+            }
+        );
         inc3.attachServer(server);
+        httpSecurity.configureServer(server);
         return server;
     })
     .catch((error) => {

@@ -8,6 +8,8 @@ public/manuales/*
 .local-backup/
 artifacts/
 outputs/
+output/
+tmp/
 .env.*
 !.env.example
 .vscode/

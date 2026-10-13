@@ -4,8 +4,10 @@ Sistema de soporte informático con tickets, seguimiento SLA, inventario, report
 
 ## Descargar e instalar
 
-- [Descargar el paquete de instalación del Incremento IV](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/incremento-iv-20261011/Ticketera-Clinica-Aconcagua-Incremento-IV.zip)
-- [Ver la entrega descargable](https://github.com/BenjaGC/INCREMENTO-IV/releases/tag/incremento-iv-20261011)
+- [Descargar el paquete revisado del Incremento IV](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/incremento-iv-20261012/Ticketera-Clinica-Aconcagua-Incremento-IV.zip)
+- [Ver la entrega descargable y sus huellas SHA-256](https://github.com/BenjaGC/INCREMENTO-IV/releases/tag/incremento-iv-20261012)
+- [Manual PDF para presentar e instalar en la clínica](docs/Manual-presentacion-instalacion-clinica.pdf)
+- [Manual editable y guion de presentación](docs/MANUAL-PRESENTACION-CLINICA.md)
 - [Paso a paso desde GitHub](docs/INSTALACION-DESDE-GITHUB.md)
 - [Guía completa de instalación y creación del administrador](docs/INSTALACION.md)
 
@@ -21,7 +23,9 @@ El código está en la raíz del repositorio; las instrucciones y los resultados
 
 Código preparado para revisión e instalación en un entorno de prueba. No incluye usuarios, contraseñas, tickets, adjuntos ni credenciales de la instalación local. La publicación de este repositorio no constituye un despliegue en la clínica.
 
-Entrega revisada el 11 de octubre de 2026. Instalación, seguridad, regresión e interfaz verificadas en bases aisladas; consultar [verificación del Incremento IV](docs/VERIFICACION-INCREMENTO-IV.md). Los servicios institucionales y el servidor de destino aún deben configurarse y comprobarse con TI.
+Entrega revisada el **12 de octubre de 2026**. Las siete suites de instalación, seguridad, regresión e interfaz terminaron correctamente en bases aisladas. Se corrigieron una caída por solicitudes malformadas y un cierre de sesión incompleto, y se reforzaron cargas de archivos, Excel, destinos externos y límites de recursos. Consultar la [revisión de seguridad y sus límites](docs/REVISION-SEGURIDAD-20261012.md) y los [resultados finales](docs/RESULTADOS-VERIFICACION-20261012.json). Los servicios institucionales y el servidor de destino aún deben configurarse y comprobarse con TI.
+
+El servidor escucha en `127.0.0.1` por defecto. En producción el autorregistro está cerrado, se exige HTTPS y TI debe habilitar los hosts y puertos de destinos externos. El manual contiene instrucciones para presentar desde un PC propio y para instalar una instancia central en la clínica, además de respaldo, recuperación y aceptación del piloto.
 
 ## Novedades del Incremento IV
 
@@ -74,7 +78,8 @@ Antes de iniciar, seguir el apartado de migraciones de [INSTALACION.md](docs/INS
 | `npm run test:regression` | Pruebas del Incremento III en base temporal. |
 | `npm run test:ui` | Recorrido de interfaz, aceptación, descargas y administración. |
 | `npm run test:increment4` | Apariencia, bloqueos, respaldo de trazas y fallos controlados en base temporal. |
-| `npm run verify:delivery` | Ejecutar las seis suites de verificación de forma secuencial. |
+| `npm run test:adversarial` | Pruebas locales acotadas de entradas malformadas, permisos, archivos y disponibilidad en base temporal. |
+| `npm run verify:delivery` | Ejecutar las siete suites de verificación de forma secuencial. |
 | `npm run account:unlock -- RUT "Motivo"` | Desbloqueo por TI desde terminal, con motivo auditado. |
 
 Las pruebas necesitan dependencias de desarrollo, `npx playwright install chromium`, acceso a MySQL con permisos para crear/eliminar bases de prueba y puerto 3200 libre. Ejecutarlas una por una en un entorno separado. Los envíos de correo de estas pruebas son simulados y no certifican recepción SMTP real.

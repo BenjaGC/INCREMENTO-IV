@@ -19,7 +19,8 @@
     "prepare:github": "node scripts/preparar-github.cjs",
     "account:unlock": "node scripts/desbloquear-cuenta.cjs",
     "test:increment4": "node scripts/test-increment4.cjs",
-    "verify:delivery": "node scripts/verificar-entrega.cjs"
+    "verify:delivery": "node scripts/verificar-entrega.cjs",
+    "test:adversarial": "node scripts/test-adversarial.cjs"
   },
   "engines": {
     "node": ">=22.12.0"

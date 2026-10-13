@@ -126,7 +126,7 @@ module.exports = function registerAcceptance(
 
     const csvUpload = multer({
         storage: multer.memoryStorage(),
-        limits: { fileSize: 2 * 1024 * 1024, files: 1 }
+        limits: require('./file-safety').limits(2)
     }).single('archivo');
     app.post('/usuarios/importar-csv', admin, (req, res) =>
         csvUpload(req, res, async (uploadError) => {

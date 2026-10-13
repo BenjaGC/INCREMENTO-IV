@@ -58,7 +58,7 @@ class ReporteKPI extends Reporte {
 }
 class ReporteFinanciero extends Reporte {
     generar(movimientos) {
-        const agrupado = {};
+        const agrupado = Object.create(null);
         let totalGastado = 0;
         movimientos.forEach((m) => {
             totalGastado += Number(m.costo_total);

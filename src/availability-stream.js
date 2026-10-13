@@ -2,6 +2,8 @@ const { WebSocketServer, WebSocket } = require('ws');
 
 module.exports = function attachAvailability(server, { pool, snapshot, log }) {
     const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
+    const peers = new Map();
+    let pending = 0;
     server.on('upgrade', (req, socket, head) => {
         if (req.url !== '/api/v3/availability/live') return socket.destroy();
         let validOrigin = true;
@@ -16,13 +18,32 @@ module.exports = function attachAvailability(server, { pool, snapshot, log }) {
             socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
             return socket.destroy();
         }
+        const ip = req.socket.remoteAddress;
+        const peer = peers.get(ip) || { clients: 0, pending: 0 };
+        if (
+            wss.clients.size >= 64 ||
+            pending >= 32 ||
+            peer.clients >= 24 ||
+            peer.pending >= 8
+        ) {
+            socket.write(
+                'HTTP/1.1 429 Too Many Requests\r\nRetry-After: 5\r\n\r\n'
+            );
+            return socket.destroy();
+        }
         wss.handleUpgrade(req, socket, head, (ws) =>
-            wss.emit('connection', ws)
+            wss.emit('connection', ws, ip)
         );
     });
-    wss.on('connection', (ws) => {
+    wss.on('connection', (ws, ip) => {
+        const peer = peers.get(ip) || { clients: 0, pending: 0 };
+        peers.set(ip, peer);
+        peer.clients++;
+        peer.pending++;
+        pending++;
         let token,
-            busy = false;
+            busy = false,
+            authenticated = false;
         const timeout = setTimeout(
             () => ws.close(4401, 'Autenticación requerida'),
             5000
@@ -39,6 +60,12 @@ module.exports = function attachAvailability(server, { pool, snapshot, log }) {
                     ws.close(4403, 'Acceso denegado');
                     return;
                 }
+                if (!authenticated) {
+                    authenticated = true;
+                    pending--;
+                    peer.pending--;
+                    clearTimeout(timeout);
+                }
                 ws.send(
                     JSON.stringify({
                         type: 'availability',
@@ -46,6 +73,8 @@ module.exports = function attachAvailability(server, { pool, snapshot, log }) {
                     })
                 );
             } catch (error) {
+                if (!authenticated)
+                    ws.close(1013, 'Servicio temporalmente no disponible');
                 if (ws.readyState === WebSocket.OPEN)
                     ws.send(
                         JSON.stringify({
@@ -68,11 +97,10 @@ module.exports = function attachAvailability(server, { pool, snapshot, log }) {
                 if (
                     msg.type !== 'auth' ||
                     typeof msg.token !== 'string' ||
-                    msg.token.length > 256
+                    !/^[a-f0-9]{64}$/.test(msg.token)
                 )
                     throw Error();
                 token = msg.token;
-                clearTimeout(timeout);
                 send();
             } catch {
                 ws.close(4401, 'Autenticación inválida');
@@ -81,6 +109,12 @@ module.exports = function attachAvailability(server, { pool, snapshot, log }) {
         const timer = setInterval(send, 15000);
         ws.on('error', () => {});
         ws.on('close', () => {
+            peer.clients--;
+            if (!authenticated) {
+                pending--;
+                peer.pending--;
+            }
+            if (!peer.clients) peers.delete(ip);
             clearTimeout(timeout);
             clearInterval(timer);
         });

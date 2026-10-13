@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer');
 
-module.exports = nodemailer.createTransport({
+const transport = nodemailer.createTransport({
     ...(process.env.SMTP_HOST
         ? {
               host: process.env.SMTP_HOST,
@@ -16,3 +16,17 @@ module.exports = nodemailer.createTransport({
         pass: process.env.MAIL_PASSWORD
     }
 });
+transport.configured = Boolean(
+    process.env.MAIL_USER && process.env.MAIL_PASSWORD
+);
+const send = transport.sendMail.bind(transport);
+transport.sendMail = (message, callback) => {
+    if (transport.configured) return send(message, callback);
+    const error = new Error('Correo no configurado en el servidor.');
+    if (callback) {
+        queueMicrotask(() => callback(error));
+        return;
+    }
+    return Promise.reject(error);
+};
+module.exports = transport;

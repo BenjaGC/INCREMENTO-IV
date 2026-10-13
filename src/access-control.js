@@ -68,11 +68,9 @@ module.exports = function (app, pool) {
                     'Retry-After',
                     Math.ceil((bucket.until - now) / 1000)
                 );
-                return res
-                    .status(429)
-                    .json({
-                        error: 'Demasiados intentos. Espera unos minutos.'
-                    });
+                return res.status(429).json({
+                    error: 'Demasiados intentos. Espera unos minutos.'
+                });
             }
             return next();
         }
@@ -107,11 +105,9 @@ module.exports = function (app, pool) {
                 [token]
             );
             if (!u)
-                return res
-                    .status(401)
-                    .json({
-                        error: 'La sesión expiró o fue cerrada. Vuelve a ingresar.'
-                    });
+                return res.status(401).json({
+                    error: 'La sesión expiró o fue cerrada. Vuelve a ingresar.'
+                });
             req.headers.authorization = 'Bearer ' + token;
             req.security = { user: u, ...Usuario.desde(u).obtenerPermisos() };
             if (
@@ -131,7 +127,7 @@ module.exports = function (app, pool) {
             req.query.esAdmin = req.security.soporte ? 'si' : 'no';
             if (url.startsWith('/uploads/')) {
                 const [[file]] = await pool.query(
-                    'SELECT a.is_deleted,t.requester_user_id,t.assigned_user_id FROM attachment a JOIN ticket t ON t.ticket_id=a.ticket_id WHERE a.file_path=?',
+                    'SELECT a.is_deleted,a.mime_type,t.requester_user_id,t.assigned_user_id FROM attachment a JOIN ticket t ON t.ticket_id=a.ticket_id WHERE a.file_path=?',
                     [url]
                 );
                 if (
@@ -147,8 +143,19 @@ module.exports = function (app, pool) {
                     'Content-Security-Policy',
                     "sandbox; default-src 'none'; style-src 'unsafe-inline'"
                 );
-                if (!/\.(png|jpe?g|gif|webp|pdf)$/i.test(url))
+                const inline = {
+                    '.png': 'image/png',
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg',
+                    '.gif': 'image/gif',
+                    '.webp': 'image/webp',
+                    '.pdf': 'application/pdf'
+                }[require('path').extname(url).toLowerCase()];
+                if (!inline || inline !== file.mime_type) {
+                    res.type('application/octet-stream');
                     res.attachment(require('path').basename(url));
+                    res.type('application/octet-stream');
+                } else res.type(inline);
                 return next();
             }
             if (
@@ -173,11 +180,9 @@ module.exports = function (app, pool) {
                         t.requester_user_id !== u.user_id &&
                         t.assigned_user_id !== u.user_id
                     )
-                        return res
-                            .status(403)
-                            .json({
-                                error: 'No tienes permiso para esta operación.'
-                            });
+                        return res.status(403).json({
+                            error: 'No tienes permiso para esta operación.'
+                        });
                     if (t.is_archived && !['GET', 'HEAD'].includes(req.method))
                         return res
                             .status(409)
@@ -187,11 +192,9 @@ module.exports = function (app, pool) {
                         url === '/incidente/reasignar' &&
                         !req.security.admin
                     )
-                        return res
-                            .status(403)
-                            .json({
-                                error: 'Solo el administrador puede reasignar tickets.'
-                            });
+                        return res.status(403).json({
+                            error: 'Solo el administrador puede reasignar tickets.'
+                        });
                     if (
                         req.method === 'POST' &&
                         [
@@ -207,11 +210,9 @@ module.exports = function (app, pool) {
                         (!req.security.soporte ||
                             t.assigned_user_id !== u.user_id)
                     )
-                        return res
-                            .status(403)
-                            .json({
-                                error: 'Solo el técnico asignado o administrador puede realizar esta acción.'
-                            });
+                        return res.status(403).json({
+                            error: 'Solo el técnico asignado o administrador puede realizar esta acción.'
+                        });
                 }
                 if (
                     !req.security.soporte &&
@@ -224,33 +225,32 @@ module.exports = function (app, pool) {
                         '/incidente/cerrar'
                     ].includes(url)
                 )
-                    return res
-                        .status(403)
-                        .json({
-                            error: 'No tienes permiso para esta operación.'
-                        });
+                    return res.status(403).json({
+                        error: 'No tienes permiso para esta operación.'
+                    });
                 return next();
             }
             if (
                 req.method === 'GET' &&
-                url === '/materiales' &&
+                [
+                    '/materiales',
+                    '/insumos/stock',
+                    '/tecnicos',
+                    '/reportes/mapa-calor'
+                ].includes(url) &&
                 req.security.soporte
             )
                 return next();
             // Unknown legacy operations default to administrator, not anonymous access.
             if (!req.security.admin)
-                return res
-                    .status(403)
-                    .json({
-                        error: 'Se requiere una sesión de administrador.'
-                    });
+                return res.status(403).json({
+                    error: 'Se requiere una sesión de administrador.'
+                });
             return next();
         } catch (e) {
-            return res
-                .status(503)
-                .json({
-                    error: 'No se pudo verificar la sesión. Intenta nuevamente.'
-                });
+            return res.status(503).json({
+                error: 'No se pudo verificar la sesión. Intenta nuevamente.'
+            });
         }
     });
 };

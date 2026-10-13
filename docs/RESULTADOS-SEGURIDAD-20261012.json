@@ -1,0 +1,147 @@
+{
+  "date": "2026-10-12",
+  "target": "loopback y base aislada",
+  "boundedLoad": {
+    "requests": 80,
+    "concurrency": 8
+  },
+  "results": [
+    {
+      "name": "Rutas y archivos sensibles requieren autenticación",
+      "result": "correcto",
+      "ms": 29
+    },
+    {
+      "name": "Nombres iguales y parámetros falsificados no conceden tickets ajenos",
+      "result": "correcto",
+      "ms": 24
+    },
+    {
+      "name": "Una consulta malformada se rechaza sin detener el servidor",
+      "result": "correcto",
+      "ms": 7
+    },
+    {
+      "name": "JSON con tipos incorrectos recibe 400 y mantiene el servicio",
+      "result": "correcto",
+      "ms": 11
+    },
+    {
+      "name": "Inyección SQL no extrae ni modifica datos",
+      "result": "correcto",
+      "ms": 19
+    },
+    {
+      "name": "Registro no acepta privilegios enviados por el cliente y se cierra por defecto en producción",
+      "result": "correcto",
+      "ms": 336
+    },
+    {
+      "name": "Las cabeceras restringen scripts externos, enmarcado y detección de MIME",
+      "result": "correcto",
+      "ms": 8
+    },
+    {
+      "name": "Excel que declara expansión excesiva se rechaza antes de procesarlo",
+      "result": "correcto",
+      "ms": 257
+    },
+    {
+      "name": "JSON con claves de prototipo no modifica objetos compartidos",
+      "result": "correcto",
+      "ms": 3
+    },
+    {
+      "name": "Solicitante y técnico no pueden administrar seguridad, importación ni parámetros",
+      "result": "correcto",
+      "ms": 71
+    },
+    {
+      "name": "Cookie sin bearer y origen extraño no autorizan mutaciones",
+      "result": "correcto",
+      "ms": 4
+    },
+    {
+      "name": "Recorrido de carpetas no expone archivos ni configuración",
+      "result": "correcto",
+      "ms": 21
+    },
+    {
+      "name": "Subir a un ticket inexistente o ajeno no deja archivos huérfanos",
+      "result": "correcto",
+      "ms": 30
+    },
+    {
+      "name": "Evidencia HTML se descarga sin ejecutar scripts en el origen",
+      "result": "correcto",
+      "ms": 211
+    },
+    {
+      "name": "Evidencia JavaScript se entrega como descarga binaria",
+      "result": "correcto",
+      "ms": 34
+    },
+    {
+      "name": "Fórmulas de texto se neutralizan en la exportación CSV",
+      "result": "correcto",
+      "ms": 16
+    },
+    {
+      "name": "Manual con extensión y MIME PDF falsificados se rechaza",
+      "result": "correcto",
+      "ms": 10
+    },
+    {
+      "name": "Los campos multipart están acotados",
+      "result": "correcto",
+      "ms": 12
+    },
+    {
+      "name": "No hay inyección de HTML en las notificaciones de correo",
+      "result": "correcto",
+      "ms": 57
+    },
+    {
+      "name": "Una URL externa no autorizada no puede alcanzar servicios internos",
+      "result": "correcto",
+      "ms": 6
+    },
+    {
+      "name": "WebSocket exige sesión administrativa y rechaza otros orígenes",
+      "result": "correcto",
+      "ms": 25
+    },
+    {
+      "name": "Conexiones WebSocket sin autenticar no ocupan indefinidamente el servicio",
+      "result": "correcto",
+      "ms": 5021
+    },
+    {
+      "name": "Medición de ráfaga local",
+      "result": "correcto",
+      "requests": 80,
+      "concurrency": 8,
+      "p95ms": 31,
+      "maxms": 33
+    },
+    {
+      "name": "Una ráfaga acotada de 80 consultas con 8 clientes conserva la disponibilidad",
+      "result": "correcto",
+      "ms": 142
+    },
+    {
+      "name": "XSS almacenado no se ejecuta al abrir el ticket",
+      "result": "correcto",
+      "ms": 3364
+    },
+    {
+      "name": "La sesión se revoca al cerrar y no admite reutilización",
+      "result": "correcto",
+      "ms": 26
+    },
+    {
+      "name": "Conservación de datos originales",
+      "result": "correcto"
+    }
+  ]
+}

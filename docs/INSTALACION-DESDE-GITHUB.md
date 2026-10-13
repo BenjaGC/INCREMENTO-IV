@@ -4,7 +4,7 @@ Esta guía indica cómo obtener la entrega y en qué orden instalarla. Para los 
 
 ## 1. Obtener la aplicación
 
-Abrir [la entrega del Incremento IV](https://github.com/BenjaGC/INCREMENTO-IV/releases/tag/incremento-iv-20261011). En **Assets**, descargar `Ticketera-Clinica-Aconcagua-Incremento-IV.zip`. Extraer TODO el contenido en una carpeta propia y abrir esa carpeta en Visual Studio Code. La carpeta correcta contiene `package.json`, `server.js`, `.env.example`, `src/`, `public/`, `database/`, `scripts/` y `docs/`.
+Abrir [la entrega revisada del Incremento IV](https://github.com/BenjaGC/INCREMENTO-IV/releases/tag/incremento-iv-20261012). En **Assets**, descargar `Ticketera-Clinica-Aconcagua-Incremento-IV.zip`. Extraer TODO el contenido en una carpeta propia y abrir esa carpeta en Visual Studio Code. La carpeta correcta contiene `package.json`, `server.js`, `.env.example`, `src/`, `public/`, `database/`, `scripts/` y `docs/`. El [manual PDF](Manual-presentacion-instalacion-clinica.pdf) incluye el recorrido de presentación y soluciones a errores frecuentes.
 
 También puede descargarse el código mediante **Code → Download ZIP**. Para trabajar en el código con Git:
 

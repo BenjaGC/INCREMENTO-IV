@@ -9,6 +9,10 @@ La aplicación es un monolito modular cliente–servidor de tres capas. Node/Exp
 | `server.js` | Carga configuración y arranca la aplicación. |
 | `src/server.js` | Operaciones originales de tickets, inventario, reportes, manuales y tareas SLA. |
 | `src/access-control.js` | Verificación de sesión y permisos de rutas. |
+| `src/http-security.js` | Validación de tipos, errores asíncronos, cabeceras y límites de peticiones. |
+| `src/file-safety.js` | Límites de carga, firmas básicas de PDF/imágenes y expansión acotada de Excel. |
+| `src/external-connection.js` | Destinos externos autorizados por TI, protocolo, puerto y tiempo de espera. |
+| `src/registration-policy.js` | Autorregistro habilitado en desarrollo y cerrado por defecto en producción. |
 | `src/domain.js`, `src/sla.js`, `src/reports.js` | Modelos y reglas compartidas. |
 | `src/increment3.js` | Rutas de perfil, categorías, archivo histórico, encuestas y coordinación del III. |
 | `src/increment3-schema.js`, `src/identity-schema.js` | Migraciones aditivas, tipos de usuarios e integridad de archivos históricos. |
@@ -43,6 +47,7 @@ npm run test:security
 npm run test:regression
 npm run test:increment4
 npm run test:ui
+npm run test:adversarial
 npm audit
 ```
 

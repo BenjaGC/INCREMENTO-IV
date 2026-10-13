@@ -25,6 +25,7 @@ En `.env`, reemplazar las líneas correspondientes (sin duplicarlas):
 ```dotenv
 NODE_ENV=development
 PORT=3000
+CLINICA_BIND_ADDRESS=127.0.0.1
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=clinica_app

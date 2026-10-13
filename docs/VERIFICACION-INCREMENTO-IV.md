@@ -2,6 +2,8 @@
 
 Fecha de revisión: 11 de octubre de 2026. Windows, Node.js 24 y MySQL 8.4. Pruebas reproducibles en bases y directorios separados de la instalación original.
 
+La revisión posterior del 12 de octubre y el paquete actualizado están documentados en [REVISION-SEGURIDAD-20261012.md](REVISION-SEGURIDAD-20261012.md). Este documento conserva el resultado histórico del día 11.
+
 ## Alcance
 
 Se revisaron CU-67, CU-68 y CU-70 del documento recibido, además de las suites existentes de instalación, seguridad, regresión e interfaz. Las capturas provienen de pantallas funcionando contra una base temporal con cuentas y registros de prueba. No contienen códigos CU, nombres de figura superpuestos, JSON ni stacks técnicos.

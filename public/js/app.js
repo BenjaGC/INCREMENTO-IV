@@ -29,6 +29,7 @@ function app() {
 
         // ── Auth ──
         authTab: 'login',
+        publicRegistration: false,
         authMsg: '',
         authMsgColor: 'red',
         login: { rut: '', pass: '' },
@@ -416,6 +417,15 @@ function app() {
             this.initUI();
             this.v3Init();
             this.v4Init();
+            fetch('/public-policy')
+                .then((r) => (r.ok ? r.json() : null))
+                .then((policy) => {
+                    this.publicRegistration =
+                        policy?.registrationEnabled === true;
+                })
+                .catch(() => {
+                    this.publicRegistration = false;
+                });
         },
 
         // ════════════════════════════════════

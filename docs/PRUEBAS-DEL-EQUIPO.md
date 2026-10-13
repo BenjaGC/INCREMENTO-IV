@@ -1,6 +1,6 @@
 # Entrega para revisión entre compañeros
 
-Esta es la aplicación actual, con las funciones del Incremento III y los scripts de instalación. Cada compañero instala una base independiente en su computador; sus cambios no llegan al PC de Benjamín ni a los otros compañeros.
+Esta es la aplicación actual, con las funciones de los incrementos III y IV y los scripts de instalación. Cada compañero instala una base independiente en su computador; sus cambios no llegan al PC de Benjamín ni a los otros compañeros. Para compartir datos en la clínica se instala una instancia central administrada por TI.
 
 El paquete comienza sin cuentas, tickets, archivos adjuntos ni manuales cargados. Incluye estructura, catálogos y migraciones de la base. No necesita acceder al computador de Benjamín. Los archivos cargados y los datos de las pruebas quedan en la instalación de cada compañero.
 

@@ -39,6 +39,8 @@ Completar la configuración privada de `.env` en el servidor de destino. Los sig
 ```dotenv
 NODE_ENV=production
 PORT=3000
+CLINICA_BIND_ADDRESS=127.0.0.1
+CLINICA_PUBLIC_REGISTRATION=false
 PUBLIC_ORIGIN=https://ticketera.DOMINIO-DE-LA-CLINICA
 CLINICA_DATA_DIR=C:/ClinicaAconcagua/datos
 CLINICA_BACKUP_DIR=C:/ClinicaAconcagua/respaldos
@@ -59,7 +61,11 @@ Registrar un servicio o una tarea de arranque utilizando el mecanismo de adminis
 
 Arrancar el servicio y comprobar `/health/ready`: debe responder `{"status":"ready"}`. Crear al administrador siguiendo el apartado correspondiente de [INSTALACION.md](INSTALACION.md), con su RUT, nombre y correo institucional reales. La contraseña temporal no se guarda en archivos ni se pasa como argumento visible del comando.
 
-Ingresar desde la dirección HTTPS, cambiar la contraseña temporal y revisar áreas, equipos, categorías, prioridades, horario operativo y responsables. Definir con el responsable funcional si las altas serán mediante registro, importación o administración. Esta versión mantiene disponible el registro de usuarios; TI debe aprobar esa política antes de publicar el acceso.
+Ingresar desde la dirección HTTPS, cambiar la contraseña temporal y revisar áreas, equipos, categorías, prioridades, horario operativo y responsables. El registro público está deshabilitado por defecto en producción; utilizar las importaciones administrativas para altas de funcionarios. Solo si TI aprueba el autorregistro se configura `CLINICA_PUBLIC_REGISTRATION=true`. El registro público nunca concede permisos de administrador.
+
+La aplicación escucha en `127.0.0.1` por defecto. El proxy debe conservar el host público y establecer correctamente `X-Forwarded-Proto`. Las peticiones HTTP de producción se rechazan salvo las rutas de salud. Configurar `CLINICA_EXTERNAL_ALLOWED_HOSTS` con los hosts y puertos específicos de servicios aprobados antes de guardar o probar un destino externo, por ejemplo `servicio.interno:8443`. No admite comodines ni credenciales en la URL.
+
+Los límites iniciales son 64 peticiones activas y 1200 peticiones por minuto por IP. Mantenerlos durante el piloto y ajustar con mediciones reales; no sustituyen protección perimetral ni permiten prometer resistencia a ataques distribuidos. Los adjuntos requieren análisis antimalware externo según la política de TI.
 
 ## 5. Comprobar el servidor de destino
 

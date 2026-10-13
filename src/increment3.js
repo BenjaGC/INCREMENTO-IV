@@ -901,7 +901,7 @@ module.exports = function register(
     );
     const excel = multer({
         storage: multer.memoryStorage(),
-        limits: { fileSize: 5 * 1024 * 1024, files: 1 }
+        limits: require('./file-safety').limits(5)
     }).single('archivo');
     router.get('/users/template', admin, (req, res) => {
         const wb = XLSX.utils.book_new();
@@ -927,6 +927,7 @@ module.exports = function register(
                     fail('Selecciona un archivo .xlsx.');
                 let rows;
                 try {
+                    require('./file-safety').validateWorkbook(req.file.buffer);
                     const w = XLSX.read(req.file.buffer, {
                         type: 'buffer',
                         raw: true

@@ -3,7 +3,7 @@ require('dotenv').config({ quiet: true });
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const output = path.resolve('artifacts/verificacion-final-incremento-IV');
+const output = path.resolve('artifacts/verificacion-final-20261012');
 fs.mkdirSync(output, { recursive: true });
 const suites = [
     ['sintaxis', 'scripts/comprobar-sintaxis.cjs'],
@@ -11,7 +11,8 @@ const suites = [
     ['seguridad', 'scripts/test-production-security.cjs'],
     ['regresion', 'scripts/test-production-regression.cjs'],
     ['incremento-IV', 'scripts/test-increment4.cjs'],
-    ['interfaz', 'scripts/production-test-ui.cjs']
+    ['interfaz', 'scripts/production-test-ui.cjs'],
+    ['adversarial', 'scripts/test-adversarial.cjs']
 ];
 (async () => {
     const results = [];
@@ -41,7 +42,7 @@ const suites = [
         fs.writeFileSync(
             path.join(output, 'RESULTADOS.json'),
             JSON.stringify(
-                { date: '2026-10-11', isolated: true, results },
+                { date: '2026-10-12', isolated: true, results },
                 null,
                 2
             )
