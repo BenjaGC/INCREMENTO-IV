@@ -10,7 +10,7 @@ const mysql = require('mysql2/promise');
 const { WebSocket } = require('ws');
 const { chromium, expect } = require('@playwright/test');
 const probe = process.argv.includes('--probe');
-const output = path.resolve('artifacts/seguridad-20261012');
+const output = path.resolve('artifacts/seguridad-20261014');
 fs.mkdirSync(output, { recursive: true });
 const results = [];
 const base = 'http://127.0.0.1:3200';
@@ -228,6 +228,122 @@ async function wsResult(token, origin, payload) {
             user = await login('22222222-2'),
             owner = await login('33333333-3'),
             tech = await login('44444444-4');
+        await test('La base solo conserva el hash de sesión y ese hash no permite autenticarse', async () => {
+            const [[row]] = await db.query(
+                'SELECT session_token,session_token_hash,password_hash FROM user WHERE user_id=1'
+            );
+            assert.equal(row.session_token, null);
+            assert.equal(
+                row.session_token_hash,
+                require('../src/session').digest(admin)
+            );
+            assert.notEqual(row.session_token_hash, admin);
+            assert.equal(
+                (await request('/incidentes', row.session_token_hash)).status,
+                401
+            );
+            assert.match(row.password_hash, /^\$2[aby]\$/);
+            assert.equal(
+                await require('../src/passwords').verify('legacy', 'legacy'),
+                false
+            );
+        });
+        await test('Cookie HttpOnly permite escrituras propias con control CSRF, nunca desde otro origen', async () => {
+            assert.equal(
+                (
+                    await request(
+                        '/api/v3/profile',
+                        null,
+                        { area: 'Prueba propia', piso: 'Piso 1' },
+                        'PUT',
+                        {
+                            Cookie: 'clinica_session=' + owner,
+                            'X-Clinica-Request': '1',
+                            Origin: base
+                        }
+                    )
+                ).status,
+                200
+            );
+            assert.equal(
+                (
+                    await request(
+                        '/api/v3/profile',
+                        null,
+                        { area: 'No autorizado', piso: 'Piso 1' },
+                        'PUT',
+                        {
+                            Cookie: 'clinica_session=' + owner,
+                            'X-Clinica-Request': '1',
+                            Origin: 'https://externo.example'
+                        }
+                    )
+                ).status,
+                403
+            );
+        });
+        await test('Los GET del ticket no aceptan un body para sustituir el código de la URL', async () => {
+            for (const suffix of [
+                'materiales',
+                'etiqueta-pdf',
+                'qr',
+                'adjuntos-zip'
+            ])
+                assert.equal(
+                    (await request('/incidente/INC0000001/' + suffix, user))
+                        .status,
+                    403
+                );
+            const [ownTicket] = await db.query(
+                "INSERT INTO ticket(ticket_code,title,description,requester_user_id,category_id,status_id,priority_id,equipment_id,assigned_user_id) VALUES('INC0000088','Propio','Ticket propio para comprobar alcance',2,1,5,1,?,1)",
+                [equipment.insertId]
+            );
+            const http = require('node:http');
+            const status = await new Promise((resolve, reject) => {
+                const data = JSON.stringify({ id_ticket: 'INC0000088' });
+                const req = http.request(
+                    base + '/incidente/INC0000001/qr',
+                    {
+                        method: 'GET',
+                        headers: {
+                            Authorization: 'Bearer ' + user,
+                            'Content-Type': 'application/json',
+                            'Content-Length': Buffer.byteLength(data)
+                        }
+                    },
+                    (res) => {
+                        res.resume();
+                        resolve(res.statusCode);
+                    }
+                );
+                req.on('error', reject);
+                req.end(data);
+            });
+            assert.equal(status, 403);
+            assert.equal(
+                (await request('/incidente/qr?id_ticket=INC0000088', user))
+                    .status,
+                400
+            );
+            await db.query('DELETE FROM ticket WHERE ticket_id=?', [
+                ownTicket.insertId
+            ]);
+        });
+        await test('Las rutas versionadas deniegan por defecto cualquier función no autorizada', async () => {
+            for (const url of [
+                '/api/v3/availability',
+                '/api/v3/competencies',
+                '/api/v3/surveys',
+                '/api/v3/survey-results',
+                '/api/v3/trash',
+                '/api/v3/jobs',
+                '/api/v3/integration-activity',
+                '/api/v3/no-registrada',
+                '/api/v4/no-registrada'
+            ])
+                for (const token of [user, tech])
+                    assert.equal((await request(url, token)).status, 403);
+        });
         await test('Rutas y archivos sensibles requieren autenticación', async () => {
             for (const url of [
                 '/.env',
@@ -242,6 +358,180 @@ async function wsResult(token, origin, payload) {
                 assert.ok([401, 403, 404].includes(r.status));
                 assert.ok(!(await r.text()).includes('DB_PASSWORD'));
             }
+        });
+        await test('Producción exige datos privados, secreto y proxies explícitos; desarrollo no se expone a la red', async () => {
+            const { spawnSync } = require('node:child_process');
+            const config = {
+                ...process.env,
+                NODE_ENV: 'production',
+                DB_NAME: 'config_validada',
+                DB_USER: 'clinica_app',
+                DB_PASSWORD: 'CredencialPrivadaDePrueba',
+                PUBLIC_ORIGIN: 'https://clinica.example',
+                MAIL_USER: 'qa@example.test',
+                MAIL_PASSWORD: 'CorreoPrivadoDePrueba',
+                CLINICA_BACKUP_DIR: path.join(temp, 'backup'),
+                CLINICA_DATA_DIR: path.join(temp, 'data'),
+                CLINICA_TRUSTED_PROXIES: '127.0.0.1',
+                CLINICA_RECOVERY_SECRET: crypto.randomBytes(32).toString('hex'),
+                CLINIC_TEST_PUBLIC: '',
+                CLINIC_INTEGRATION_TEST: '',
+                TRUST_PROXY_HOPS: ''
+            };
+            const validate = (changes) =>
+                spawnSync(
+                    process.execPath,
+                    [
+                        '-e',
+                        'require(process.argv[1])()',
+                        path.resolve('src/production-config.js')
+                    ],
+                    {
+                        env: { ...config, ...changes },
+                        encoding: 'utf8',
+                        windowsHide: true
+                    }
+                ).status;
+            assert.equal(validate({}), 0);
+            for (const change of [
+                { CLINICA_DATA_DIR: '' },
+                { CLINICA_DATA_DIR: path.resolve('public/uploads') },
+                { CLINICA_TRUSTED_PROXIES: '0.0.0.0/0' },
+                { TRUST_PROXY_HOPS: '2' },
+                { NODE_ENV: 'development', CLINICA_BIND_ADDRESS: '0.0.0.0' },
+                { CLINICA_RECOVERY_SECRET: 'corta' }
+            ])
+                assert.notEqual(validate(change), 0);
+            assert.ok(
+                fs
+                    .readFileSync('.env.example', 'utf8')
+                    .includes('NODE_ENV=production')
+            );
+        });
+        await test('Recuperación persiste entre instancias y reemitir no reinicia intentos ni inunda de correos', async () => {
+            await db.query(
+                "UPDATE user SET institutional_email='recuperacion@example.test' WHERE user_id=3"
+            );
+            const mails = () =>
+                fs
+                    .readFileSync(path.join(temp, 'mail.jsonl'), 'utf8')
+                    .trim()
+                    .split('\n')
+                    .map(JSON.parse)
+                    .filter((m) => m.subject === 'Recuperación de acceso');
+            assert.equal(
+                (
+                    await request('/recuperar-solicitar', null, {
+                        rut: '33333333-3'
+                    })
+                ).status,
+                200
+            );
+            assert.equal(mails().length, 1);
+            for (let n = 0; n < 4; n++)
+                assert.equal(
+                    (
+                        await request('/recuperar-verificar', null, {
+                            rut: '33333333-3',
+                            codigo: '000000'
+                        })
+                    ).status,
+                    400
+                );
+            await db.query(
+                'UPDATE security_recovery SET last_sent=DATE_SUB(NOW(),INTERVAL 2 MINUTE)'
+            );
+            assert.equal(
+                (
+                    await request('/recuperar-solicitar', null, {
+                        rut: '33333333-3'
+                    })
+                ).status,
+                200
+            );
+            const code = mails()
+                .at(-1)
+                .text.match(/\b\d{6}\b/)[0];
+            const [[row]] = await db.query('SELECT * FROM security_recovery');
+            assert.equal(row.attempts, 4);
+            assert.equal(row.sends, 2);
+            assert.notEqual(row.code_hash, code);
+            const isolatedPool = mysql.createPool({
+                ...options,
+                database: name
+            });
+            try {
+                const handlers = new Map();
+                require('../src/password-recovery')(
+                    { post: (route, fn) => handlers.set(route, fn) },
+                    {
+                        pool: isolatedPool,
+                        transporter: { sendMail: async () => {} }
+                    }
+                );
+                const reply = {
+                    statusCode: 200,
+                    status(n) {
+                        this.statusCode = n;
+                        return this;
+                    },
+                    json(value) {
+                        this.value = value;
+                        return this;
+                    }
+                };
+                await handlers.get('/recuperar-verificar')(
+                    { body: { rut: '33333333-3', codigo: code } },
+                    reply
+                );
+                assert.equal(reply.statusCode, 200);
+                assert.equal(reply.value.success, true);
+            } finally {
+                await isolatedPool.end();
+            }
+            assert.equal(
+                (
+                    await request('/recuperar-verificar', null, {
+                        rut: '33333333-3',
+                        codigo: '000000'
+                    })
+                ).status,
+                400
+            );
+            for (let n = 0; n < 4; n++)
+                assert.equal(
+                    (
+                        await request('/recuperar-solicitar', null, {
+                            rut: '33333333-3'
+                        })
+                    ).status,
+                    200
+                );
+            assert.equal(mails().length, 2);
+            assert.equal(
+                (
+                    await request('/recuperar-verificar', null, {
+                        rut: '33333333-3',
+                        codigo: code
+                    })
+                ).status,
+                400
+            );
+        });
+        await test('Los enlaces de comentarios incorporan protección de apertura externa', async () => {
+            await db.query(
+                'INSERT INTO comment(content,user_id,ticket_id) SELECT \'<a href="https://example.test" target="_blank">Documento</a>\',3,ticket_id FROM ticket WHERE ticket_code=\'INC0000001\''
+            );
+            const response = await request('/incidentes', owner);
+            const tickets = await response.json();
+            const comments = JSON.parse(
+                tickets.find((t) => t.id_ticket === 'INC0000001').comentarios
+            );
+            assert.ok(
+                comments.some((c) =>
+                    c.texto.includes('rel="noopener noreferrer"')
+                )
+            );
         });
         await test('Nombres iguales y parámetros falsificados no conceden tickets ajenos', async () => {
             for (const url of [
@@ -693,6 +983,25 @@ async function wsResult(token, origin, payload) {
                 await page.evaluate(() => window.ejecucionNoAutorizada),
                 undefined
             );
+            const profile = await page.evaluate(() =>
+                JSON.parse(localStorage.getItem('usuario_actual'))
+            );
+            assert.ok(!Object.hasOwn(profile, 'token'));
+            assert.equal(
+                await page.evaluate(
+                    () => Alpine.$data(document.documentElement).usuario.token
+                ),
+                undefined
+            );
+            const cookies = await ctx.cookies(base);
+            assert.ok(
+                cookies.find((c) => c.name === 'clinica_session').httpOnly
+            );
+            assert.ok(
+                !(await page.request.get(base))
+                    .headers()
+                    ['content-security-policy'].includes('unsafe-eval')
+            );
             await ctx.close();
         });
         await test('La sesión se revoca al cerrar y no admite reutilización', async () => {
@@ -727,7 +1036,7 @@ async function wsResult(token, origin, payload) {
             path.join(output, probe ? 'SONDEO.json' : 'RESULTADOS.json'),
             JSON.stringify(
                 {
-                    date: '2026-10-12',
+                    date: '2026-10-14',
                     target: 'loopback y base aislada',
                     boundedLoad: { requests: 80, concurrency: 8 },
                     results

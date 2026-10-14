@@ -53,7 +53,7 @@ module.exports = function register(
         }
     });
     app.use(async (req, res, next) => {
-        const token = (req.headers.authorization || '').replace(/^Bearer /, '');
+        const token = req.security?.user.session_token_hash;
         if (
             !token ||
             [
@@ -66,7 +66,7 @@ module.exports = function register(
             return next();
         try {
             const [[u]] = await pool.query(
-                'SELECT must_reset_password,user_status FROM user WHERE session_token=?',
+                'SELECT must_reset_password,user_status FROM user WHERE session_token_hash=?',
                 [token]
             );
             if (!u || !u.user_status)
@@ -104,10 +104,10 @@ module.exports = function register(
         throw Object.assign(new Error(message), { status });
     };
     const actor = wrap(async (req, res, next) => {
-        const token = (req.headers.authorization || '').replace(/^Bearer /, '');
+        const token = req.security?.user.session_token_hash;
         if (!token) fail('Inicia sesión para continuar.', 401);
         const [rows] = await pool.query(
-            'SELECT u.*,EXISTS(SELECT 1 FROM user_role ur WHERE ur.user_id=u.user_id AND ur.role_id=1 AND ur.active=1) admin FROM user u WHERE session_token=? AND user_status=1',
+            'SELECT u.*,EXISTS(SELECT 1 FROM user_role ur WHERE ur.user_id=u.user_id AND ur.role_id=1 AND ur.active=1) admin FROM user u WHERE session_token_hash=? AND user_status=1',
             [token]
         );
         if (!rows.length) fail('Sesión inválida o cuenta deshabilitada.', 401);
@@ -180,7 +180,7 @@ module.exports = function register(
         );
         return r[0] || null;
     };
-    // Login compatible con cuentas antiguas: migra su contraseña al validar el primer acceso.
+    // Las credenciales antiguas se migran antes de habilitar el servicio; el login solo acepta hash.
     app.post('/login', wrap(api.increment4.security.authenticate));
     router.post(
         '/password',
@@ -386,7 +386,7 @@ module.exports = function register(
     );
     api.availability = async () => {
         const [rows] = await pool.query(
-            `SELECT u.user_id,u.first_name,u.en_vacaciones,u.last_seen,(u.session_token IS NOT NULL AND u.last_seen>DATE_SUB(NOW(),INTERVAL 90 SECOND)) online,COUNT(t.ticket_id) carga FROM user u JOIN user_role ur ON ur.user_id=u.user_id AND ur.active=1 LEFT JOIN ticket t ON t.assigned_user_id=u.user_id AND t.status_id=1 AND t.is_archived=0 WHERE u.user_status=1 AND (ur.role_id=1 OR u.is_critical_tech=1 OR u.tipo_usuario='TECNICO') GROUP BY u.user_id`
+            `SELECT u.user_id,u.first_name,u.en_vacaciones,u.last_seen,(u.session_token_hash IS NOT NULL AND u.last_seen>DATE_SUB(NOW(),INTERVAL 90 SECOND)) online,COUNT(t.ticket_id) carga FROM user u JOIN user_role ur ON ur.user_id=u.user_id AND ur.active=1 LEFT JOIN ticket t ON t.assigned_user_id=u.user_id AND t.status_id=1 AND t.is_archived=0 WHERE u.user_status=1 AND (ur.role_id=1 OR u.is_critical_tech=1 OR u.tipo_usuario='TECNICO') GROUP BY u.user_id`
         );
         return { updated_at: new Date().toISOString(), threshold: 3, rows };
     };
@@ -399,6 +399,8 @@ module.exports = function register(
         require('./availability-stream')(server, {
             pool,
             snapshot: api.availability,
+            clientIp: (req) =>
+                require('proxy-addr')(req, app.get('trust proxy fn')),
             log: api.log
         });
     router.post(

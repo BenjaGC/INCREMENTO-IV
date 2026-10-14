@@ -3,7 +3,7 @@ require('dotenv').config({ quiet: true });
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const output = path.resolve('artifacts/verificacion-final-20261012');
+const output = path.resolve('artifacts/verificacion-final-20261014');
 fs.mkdirSync(output, { recursive: true });
 const suites = [
     ['sintaxis', 'scripts/comprobar-sintaxis.cjs'],
@@ -42,7 +42,7 @@ const suites = [
         fs.writeFileSync(
             path.join(output, 'RESULTADOS.json'),
             JSON.stringify(
-                { date: '2026-10-12', isolated: true, results },
+                { date: '2026-10-14', isolated: true, results },
                 null,
                 2
             )

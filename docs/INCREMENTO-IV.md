@@ -26,9 +26,9 @@ Funciona para solicitante, técnico y administrador. Se guarda con una clave `cl
 
 ## Bloqueos y recuperación de acceso
 
-Los contadores se almacenan en MySQL y se serializan con transacciones y locks de fila. Reiniciar Node no elimina el bloqueo. Un ingreso correcto antes del límite reinicia los contadores. Cinco fallos bloquean la cuenta ordinaria y la IP durante 30 minutos; una cuenta administrativa queda pendiente de desbloqueo manual. Los intentos desde una IP bloqueada se rechazan aunque usen otra cuenta.
+Los contadores se almacenan en MySQL y se serializan con transacciones y locks de fila. Reiniciar Node no elimina el bloqueo. Un ingreso correcto antes del límite reinicia los contadores. Cinco fallos bloquean la combinación de cuenta y origen durante 30 minutos; una cuenta administrativa requiere revisión manual para ese origen. Otras cuentas de la misma red no quedan bloqueadas. Entre distintos orígenes se aplica un retraso progresivo breve por cuenta, de hasta 15 segundos, para limitar intentos distribuidos.
 
-En una red compartida, varias personas pueden utilizar la misma IP. TI debe considerar este efecto al configurar el proxy y al revisar bloqueos. `TRUST_PROXY_HOPS` solo debe configurarse si no existe acceso directo al backend y el proxy institucional sobrescribe los encabezados de origen; el navegador no puede elegir su IP mediante un encabezado enviado directamente.
+En una red compartida, varias personas pueden utilizar la misma IP. TI debe considerar este efecto al configurar el proxy y al revisar bloqueos. `CLINICA_TRUSTED_PROXIES` identifica las direcciones autorizadas, y el proxy debe sobrescribir los encabezados. Ya no se acepta confianza por número de saltos. El navegador no puede elegir su IP mediante un encabezado enviado directamente.
 
 Un administrador con sesión vigente puede revisar y desbloquear una cuenta dejando un motivo de al menos diez caracteres. Si todas las cuentas administrativas están bloqueadas, **TI autorizado en el servidor** puede utilizar:
 

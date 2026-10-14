@@ -399,7 +399,12 @@ function app() {
             const saved = localStorage.getItem('usuario_actual');
             if (saved) {
                 try {
-                    this.usuario = JSON.parse(saved);
+                    const { token, ...profile } = JSON.parse(saved);
+                    this.usuario = profile;
+                    localStorage.setItem(
+                        'usuario_actual',
+                        JSON.stringify(profile)
+                    );
                 } catch {
                     localStorage.removeItem('usuario_actual');
                 }
@@ -444,7 +449,7 @@ function app() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             rut: this.usuario.rut,
-                            token: this.usuario.token
+                            cookieSession: true
                         })
                     });
                     const d = await r.json();
@@ -557,7 +562,6 @@ function app() {
                         esTecnico: d.esTecnico,
                         rut: d.rut,
                         correo: d.correo,
-                        token: d.token,
                         mustReset: d.mustReset
                     };
                     localStorage.setItem(
@@ -635,7 +639,7 @@ function app() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         rut: this.usuario.rut,
-                        token: this.usuario.token
+                        cookieSession: true
                     })
                 }).catch(() => {});
             }

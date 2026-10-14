@@ -9,6 +9,9 @@ La aplicación es un monolito modular cliente–servidor de tres capas. Node/Exp
 | `server.js` | Carga configuración y arranca la aplicación. |
 | `src/server.js` | Operaciones originales de tickets, inventario, reportes, manuales y tareas SLA. |
 | `src/access-control.js` | Verificación de sesión y permisos de rutas. |
+| `src/session.js`, `src/security-schema.js` | Cookie HttpOnly, hash de sesión y migración de contraseñas/recuperación persistente. |
+| `src/versioned-policy.js` | Permisos adicionales, con denegación administrativa por defecto para /api/v3 y /api/v4. |
+| `src/comment-html.js` | Política única de sanitización y apertura segura de enlaces. |
 | `src/http-security.js` | Validación de tipos, errores asíncronos, cabeceras y límites de peticiones. |
 | `src/file-safety.js` | Límites de carga, firmas básicas de PDF/imágenes y expansión acotada de Excel. |
 | `src/external-connection.js` | Destinos externos autorizados por TI, protocolo, puerto y tiempo de espera. |
@@ -25,6 +28,7 @@ La aplicación es un monolito modular cliente–servidor de tres capas. Node/Exp
 | `src/config/` | Conexiones MySQL y SMTP obtenidas desde `.env`. |
 | `public/index.html` | Pantallas y formularios Alpine. |
 | `public/js/app.js` | Flujos originales de la interfaz. |
+| `scripts/build-csp.cjs`, `public/js/csp-expressions.js` | Expresiones confiables del HTML compiladas antes de distribuir; no se usa eval en ejecución. |
 | `public/js/ui.js` | Presentación, filtros, navegación, foco y composición de módulos. |
 | `public/js/increment3.js`, `public/js/increment4.js` | Flujos de la interfaz de cada ampliación. |
 | `public/css/` | Estilos originales, identidad común, utilidades y modo oscuro. |
@@ -33,6 +37,8 @@ La aplicación es un monolito modular cliente–servidor de tres capas. Node/Exp
 Los archivos de aplicación fueron formateados de manera uniforme para facilitar su lectura. Se retiraron los controladores antiguos de login y edición de perfil que ya estaban sustituidos por las rutas protegidas. No se cambiaron los nombres de estados ni la estructura de tickets para hacer esta limpieza.
 
 ## Diagnóstico y reglas de cambio
+
+Después de cambiar directivas del HTML ejecutar `npm run build:csp`; distribuir juntos el HTML y el JavaScript generado. Una expresión desconocida se rechaza en lugar de evaluarse. No agregar unsafe-eval para resolver errores de compilación.
 
 Antes de editar, hacer un respaldo y reproducir el problema con una cuenta de prueba. Revisar `/health/live` y `/health/ready`; consultar Registro de errores desde Administración para incidencias técnicas. No copiar `.env`, respaldos, registros de usuarios ni adjuntos privados a un repositorio público.
 

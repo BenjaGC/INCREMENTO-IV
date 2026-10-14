@@ -112,14 +112,7 @@ require('dotenv').config({ quiet: true });
                 .getByRole('button', { name: /Ingresar|Iniciar/i })
                 .click();
             await expect(page.locator('.page-heading h1')).toBeVisible();
-            await context.setExtraHTTPHeaders({
-                Authorization:
-                    'Bearer ' +
-                    (await page.evaluate(
-                        () =>
-                            Alpine.$data(document.documentElement).usuario.token
-                    ))
-            });
+            await context.setExtraHTTPHeaders({ 'X-Clinica-Request': '1' });
             await page.evaluate(() =>
                 Alpine.$data(document.documentElement).cargarActivosBackground()
             );
@@ -327,9 +320,35 @@ require('dotenv').config({ quiet: true });
             out.on('finish', resolve);
         });
         await manual.locator('input[type="file"]').setInputFiles(pdf);
-        await expect(manual.locator('.manual-item')).toHaveCount(1, {
-            timeout: 10000
-        });
+        await expect(manual.locator('.manual-item'))
+            .toHaveCount(1, {
+                timeout: 10000
+            })
+            .catch(async (error) => {
+                console.log(
+                    'Diagnóstico de carga PDF:',
+                    await page.evaluate(() => {
+                        const s = Alpine.$data(document.documentElement);
+                        return {
+                            message: s.manualMsg,
+                            color: s.manualMsgColor,
+                            count: s.manuales?.length,
+                            role: s.usuario?.permisos
+                        };
+                    })
+                );
+                const reply = await page.request.get(
+                    'http://127.0.0.1:3200/manuales'
+                );
+                console.log(
+                    'Respuesta de manuales:',
+                    reply.status(),
+                    await reply.text(),
+                    'archivos de prueba',
+                    fs.readdirSync(path.join(temp, 'manuales'))
+                );
+                throw error;
+            });
         const url = await manual
             .locator('.manual-item a')
             .first()
@@ -469,7 +488,7 @@ require('dotenv').config({ quiet: true });
             login
         });
         await require('./production-audit-downloads.cjs')({ db, page, login });
-        await require('./production-audit-admin.cjs')({ db, page });
+        await require('./production-audit-admin.cjs')({ db, page, password });
         const expectedHttpErrors = errors.filter(
             (e) =>
                 e ===

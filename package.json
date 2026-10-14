@@ -18,6 +18,7 @@
     "test:ui": "node scripts/production-test-ui.cjs",
     "prepare:github": "node scripts/preparar-github.cjs",
     "account:unlock": "node scripts/desbloquear-cuenta.cjs",
+    "build:csp": "node scripts/build-csp.cjs",
     "test:increment4": "node scripts/test-increment4.cjs",
     "verify:delivery": "node scripts/verificar-entrega.cjs",
     "test:adversarial": "node scripts/test-adversarial.cjs"
@@ -44,6 +45,7 @@
   },
   "devDependencies": {
     "@phosphor-icons/core": "^2.1.1",
-    "@playwright/test": "^1.63.0"
+    "@playwright/test": "^1.63.0",
+    "htmlparser2": "10.1.0"
   }
 }

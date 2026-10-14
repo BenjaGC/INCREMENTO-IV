@@ -3,7 +3,7 @@ module.exports = async function migrateIncrement4(db) {
     const statements = [
         `CREATE TABLE IF NOT EXISTS inc4_access_guard (
             guard_key CHAR(64) PRIMARY KEY,
-            scope ENUM('account','ip') NOT NULL,
+            scope ENUM('account','ip','account_ip') NOT NULL,
             user_id INT NULL,
             source_ip VARCHAR(45) NULL,
             failures INT NOT NULL DEFAULT 0,
@@ -40,6 +40,13 @@ module.exports = async function migrateIncrement4(db) {
         )`
     ];
     for (const sql of statements) await db.query(sql);
+    const [[scope]] = await db.query(
+        "SELECT column_type FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='inc4_access_guard' AND column_name='scope'"
+    );
+    if (!String(scope.column_type || scope.COLUMN_TYPE).includes('account_ip'))
+        await db.query(
+            "ALTER TABLE inc4_access_guard MODIFY scope ENUM('account','ip','account_ip') NOT NULL"
+        );
     await db.query('INSERT IGNORE INTO inc4_retention_policy(id) VALUES(1)');
     for (const [table, name, columns] of [
         ['audit_log', 'inc4_audit_date', 'action_date,log_id'],

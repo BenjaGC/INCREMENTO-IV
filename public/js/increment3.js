@@ -11,13 +11,10 @@
                 options.headers ||
                     (input instanceof Request ? input.headers : undefined)
             );
-            try {
-                const u = JSON.parse(
-                    localStorage.getItem('usuario_actual') || 'null'
-                );
-                if (u?.token) headers.set('Authorization', 'Bearer ' + u.token);
-            } catch {}
-            options = { ...options, headers };
+            headers.delete('Authorization');
+            headers.set('X-Clinica-Request', '1');
+            headers.set('X-Clinica-Session', 'cookie');
+            options = { ...options, headers, credentials: 'same-origin' };
         }
         return native(input, options);
     };
@@ -530,10 +527,7 @@ function clinicIncrement3() {
                     '/api/v3/availability/live'
             );
             this.v3Socket = socket;
-            socket.onopen = () =>
-                socket.send(
-                    JSON.stringify({ type: 'auth', token: this.usuario?.token })
-                );
+            socket.onopen = () => socket.send(JSON.stringify({ type: 'auth' }));
             socket.onmessage = (event) => {
                 if (this.v3Socket !== socket) return;
                 try {

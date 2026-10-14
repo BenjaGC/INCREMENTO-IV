@@ -571,7 +571,7 @@ module.exports = (
                 }
             }
             const [r] = await c.query(
-                'UPDATE user SET user_status=0,session_token=NULL WHERE directory_id IS NOT NULL AND directory_id NOT IN (?)',
+                'UPDATE user SET user_status=0,session_token_hash=NULL WHERE directory_id IS NOT NULL AND directory_id NOT IN (?)',
                 [ids]
             );
             await c.commit();

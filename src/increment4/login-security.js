@@ -79,9 +79,12 @@ module.exports = function createLoginSecurity({ pool, transporter, log }) {
         const ip = String(req.ip || req.socket.remoteAddress || '')
             .replace(/^::ffff:/, '')
             .slice(0, 45);
-        const keys = [keyFor('account', rut), keyFor('ip', ip)].sort();
+        const keys = [
+            keyFor('account', rut),
+            keyFor('account_ip', rut + '|' + ip)
+        ].sort();
         const accountKey = keyFor('account', rut);
-        const ipKey = keyFor('ip', ip);
+        const ipKey = keyFor('account_ip', rut + '|' + ip);
         const db = await pool.getConnection();
         let response,
             status = 200,
@@ -94,7 +97,7 @@ module.exports = function createLoginSecurity({ pool, transporter, log }) {
                     'INSERT INTO inc4_access_guard(guard_key,scope,source_ip) VALUES(?,?,?) ON DUPLICATE KEY UPDATE guard_key=inc4_access_guard.guard_key',
                     [
                         key,
-                        key === accountKey ? 'account' : 'ip',
+                        key === accountKey ? 'account' : 'account_ip',
                         key === ipKey ? ip : null
                     ]
                 );
@@ -104,9 +107,13 @@ module.exports = function createLoginSecurity({ pool, transporter, log }) {
                 keys
             );
             const now = new Date(guards[0].db_now).getTime();
-            for (const guard of guards) {
+            for (const guard of [...guards].sort(
+                (a, b) =>
+                    Number(b.scope === 'account_ip') -
+                    Number(a.scope === 'account_ip')
+            )) {
                 if (
-                    guard.manual_unlock ||
+                    (guard.scope === 'account_ip' && guard.manual_unlock) ||
                     (guard.blocked_until &&
                         new Date(guard.blocked_until).getTime() > now)
                 ) {
@@ -118,11 +125,29 @@ module.exports = function createLoginSecurity({ pool, transporter, log }) {
                         'Intento rechazado durante un bloqueo activo.'
                     );
                     await db.commit();
-                    res.setHeader('Retry-After', BLOCK_MINUTES * 60);
-                    return res.status(423).json({ error: BLOCK_MESSAGE });
+                    const retry =
+                        guard.scope === 'account'
+                            ? Math.max(
+                                  1,
+                                  Math.ceil(
+                                      (new Date(guard.blocked_until).getTime() -
+                                          now) /
+                                          1000
+                                  )
+                              )
+                            : BLOCK_MINUTES * 60;
+                    res.setHeader('Retry-After', retry);
+                    return res
+                        .status(guard.scope === 'account' ? 429 : 423)
+                        .json({
+                            error:
+                                guard.scope === 'account'
+                                    ? 'Espera unos segundos antes de intentar nuevamente.'
+                                    : BLOCK_MESSAGE
+                        });
                 }
                 if (
-                    guard.blocked_until ||
+                    (guard.scope === 'account_ip' && guard.blocked_until) ||
                     (guard.last_failure &&
                         now - new Date(guard.last_failure).getTime() >
                             BLOCK_MINUTES * 60000)
@@ -148,23 +173,34 @@ module.exports = function createLoginSecurity({ pool, transporter, log }) {
                 for (const guard of guards) {
                     const failures = Number(guard.failures) + 1;
                     const manual =
-                        guard.scope === 'account' &&
+                        guard.scope === 'account_ip' &&
                         !!user?.admin &&
                         failures >= MAX_FAILURES;
-                    const blocked = failures >= MAX_FAILURES;
+                    const blocked =
+                        guard.scope === 'account_ip' &&
+                        failures >= MAX_FAILURES;
                     await db.query(
                         `UPDATE inc4_access_guard SET failures=?,last_failure=NOW(),user_id=?,
                          blocked_until=IF(?,DATE_ADD(NOW(),INTERVAL 30 MINUTE),NULL),manual_unlock=? WHERE guard_key=?`,
                         [
                             failures,
-                            guard.scope === 'account'
-                                ? user?.user_id || null
-                                : null,
+                            user?.user_id || null,
                             blocked && !manual,
                             manual,
                             guard.guard_key
                         ]
                     );
+                    if (guard.scope === 'account' && failures >= MAX_FAILURES)
+                        await db.query(
+                            'UPDATE inc4_access_guard SET blocked_until=DATE_ADD(NOW(),INTERVAL ? SECOND) WHERE guard_key=?',
+                            [
+                                Math.min(
+                                    15,
+                                    2 ** Math.min(4, failures - MAX_FAILURES)
+                                ),
+                                guard.guard_key
+                            ]
+                        );
                     if (blocked) reachedLimit = true;
                 }
                 await event(
@@ -175,7 +211,7 @@ module.exports = function createLoginSecurity({ pool, transporter, log }) {
                     reachedLimit
                         ? user?.admin
                             ? 'Cinco intentos fallidos. Cuenta administrativa: desbloqueo manual.'
-                            : 'Cinco intentos fallidos. Bloqueo de cuenta e IP durante 30 minutos.'
+                            : 'Cinco intentos fallidos. Bloqueo de la combinación cuenta e IP durante 30 minutos.'
                         : 'Credenciales inválidas.'
                 );
                 status = reachedLimit ? 423 : 401;
@@ -186,12 +222,10 @@ module.exports = function createLoginSecurity({ pool, transporter, log }) {
             } else {
                 const token = crypto.randomBytes(32).toString('hex');
                 await db.query(
-                    'UPDATE user SET session_token=?,last_seen=NOW(),last_login=NOW(),password_hash=? WHERE user_id=?',
+                    'UPDATE user SET session_token_hash=?,last_seen=NOW(),last_login=NOW(),password_hash=? WHERE user_id=?',
                     [
-                        token,
-                        /^\$2/.test(user.password_hash)
-                            ? user.password_hash
-                            : await passwords.hash(password),
+                        require('../session').digest(token),
+                        user.password_hash,
                         user.user_id
                     ]
                 );

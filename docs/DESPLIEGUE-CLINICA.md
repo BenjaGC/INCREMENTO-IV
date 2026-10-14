@@ -41,6 +41,7 @@ NODE_ENV=production
 PORT=3000
 CLINICA_BIND_ADDRESS=127.0.0.1
 CLINICA_PUBLIC_REGISTRATION=false
+CLINICA_TRUSTED_PROXIES=127.0.0.1,::1
 PUBLIC_ORIGIN=https://ticketera.DOMINIO-DE-LA-CLINICA
 CLINICA_DATA_DIR=C:/ClinicaAconcagua/datos
 CLINICA_BACKUP_DIR=C:/ClinicaAconcagua/respaldos
@@ -53,9 +54,11 @@ Configurar `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `MAIL_USER`, `MAIL_PASSWORD`
 
 Configurar un proxy con certificado HTTPS válido delante del puerto de Node.js. Restringir el acceso directo a ese puerto para que solo lo alcance el proxy. Si el proxy está en el mismo servidor, debe conectarse al backend mediante `127.0.0.1:3000`. `PUBLIC_ORIGIN` no instala el certificado ni el proxy.
 
-Solo después de limitar el acceso al backend, configurar `TRUST_PROXY_HOPS` con el número real de proxies confiables. Con un único proxy delante de Node.js corresponde `TRUST_PROXY_HOPS=1`; si la instalación tiene otra topología, TI debe definir el valor. Comprobar que la aplicación reconoce la conexión HTTPS y que el navegador recibe la cookie de sesión con el atributo `Secure`.
+Solo después de limitar el acceso al backend, configurar `CLINICA_TRUSTED_PROXIES` con sus direcciones reales. Para un proxy local, `127.0.0.1,::1`; para otra topología, TI debe elegir direcciones o redes específicas. Se rechaza la confianza por cantidad `TRUST_PROXY_HOPS` y las redes globales. El proxy debe sobrescribir los encabezados de origen. Comprobar IP del cliente, conexión HTTPS y cookie HttpOnly con Secure.
 
-Registrar un servicio o una tarea de arranque utilizando el mecanismo de administración del servidor. La orden de ejecución es `node server.js`, con la carpeta del proyecto como directorio de trabajo y una cuenta de servicio que tenga acceso a `.env`, datos y registros. Configurar MySQL para arrancar antes del servicio de la ticketera y dirigir los registros a una carpeta privada. Mantener una sola instancia de Node.js: esta versión conserva códigos de recuperación y límites de intentos en la memoria del proceso.
+Configurar `CLINICA_RECOVERY_SECRET` con un valor aleatorio privado de al menos 32 caracteres y conservarlo entre reinicios e instancias que compartan la base. Puede generarse localmente con `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. No publicarlo ni grabarlo. La recuperación guarda en MySQL código protegido, vencimiento e intentos; reemitir no reinicia el límite. Hay un máximo de tres envíos por cuenta cada 15 minutos y al menos un minuto entre envíos.
+
+Registrar un servicio o una tarea de arranque utilizando el mecanismo de administración del servidor. La orden de ejecución es `node server.js`, con la carpeta del proyecto como directorio de trabajo y una cuenta de servicio que tenga acceso a `.env`, datos y registros. Configurar MySQL para arrancar antes del servicio de la ticketera y dirigir los registros a una carpeta privada. Mantener una sola instancia de Node.js: algunos límites HTTP y la programación aún son locales al proceso. La recuperación y los bloqueos persisten en MySQL; eso no certifica el funcionamiento multiinstancia del sistema completo.
 
 ## 4. Crear el administrador y habilitar usuarios
 

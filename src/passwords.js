@@ -4,5 +4,5 @@ module.exports = {
     verify: async (password, stored) =>
         /^\$2[aby]\$/.test(stored || '')
             ? bcrypt.compare(password, stored)
-            : password === stored
+            : false
 };

@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-14",
+  "isolated": true,
+  "results": [
+    {
+      "name": "sintaxis",
+      "exit_code": 0,
+      "seconds": 7
+    },
+    {
+      "name": "instalacion",
+      "exit_code": 0,
+      "seconds": 12
+    },
+    {
+      "name": "seguridad",
+      "exit_code": 0,
+      "seconds": 12
+    },
+    {
+      "name": "regresion",
+      "exit_code": 0,
+      "seconds": 16
+    },
+    {
+      "name": "incremento-IV",
+      "exit_code": 0,
+      "seconds": 27
+    },
+    {
+      "name": "interfaz",
+      "exit_code": 0,
+      "seconds": 37
+    },
+    {
+      "name": "adversarial",
+      "exit_code": 0,
+      "seconds": 17
+    }
+  ]
+}

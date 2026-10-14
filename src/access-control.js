@@ -1,4 +1,5 @@
 const { Usuario } = require('./domain');
+const sessions = require('./session');
 const PUBLIC_POST = new Set([
     '/login',
     '/registro',
@@ -47,12 +48,20 @@ module.exports = function (app, pool) {
                 res.cookie('clinica_session', data.token, {
                     httpOnly: true,
                     sameSite: 'strict',
-                    secure: req.secure,
+                    secure: process.env.NODE_ENV === 'production',
                     maxAge: 8 * 3600000,
                     path: '/'
                 });
             if (url === '/sesion/cerrar')
                 res.clearCookie('clinica_session', { path: '/' });
+            if (
+                url === '/login' &&
+                req.headers['x-clinica-session'] === 'cookie' &&
+                data?.token
+            ) {
+                const { token, ...publicUser } = data;
+                return json(publicUser);
+            }
             return json(data);
         };
         if (PUBLIC_POST.has(url) && req.method === 'POST') {
@@ -81,34 +90,26 @@ module.exports = function (app, pool) {
         )
             return next();
         try {
-            const bearer = (req.headers.authorization || '').replace(
-                /^Bearer /,
-                ''
-            );
-            const cookie = (req.headers.cookie || '')
-                .split(';')
-                .map((s) => s.trim())
-                .find((s) => s.startsWith('clinica_session='))
-                ?.slice(16);
-            const token = bearer || cookie;
+            const { token, bearer } = sessions.read(req);
             if (!token || !/^[a-f0-9]{64}$/.test(token))
                 return res
                     .status(401)
                     .json({ error: 'Inicia sesión para continuar.' });
-            // Browser mutations require the bearer token, never only ambient cookies.
-            if (!['GET', 'HEAD'].includes(req.method) && !bearer)
+            // Cookie HttpOnly + cabecera propia + origen: un formulario externo no autoriza escrituras.
+            if (
+                !sessions.originAllowed(req) ||
+                (!['GET', 'HEAD'].includes(req.method) &&
+                    !bearer &&
+                    req.headers['x-clinica-request'] !== '1')
+            )
                 return res
                     .status(403)
                     .json({ error: 'Se requiere autorización de la sesión.' });
-            const [[u]] = await pool.query(
-                'SELECT u.*,EXISTS(SELECT 1 FROM user_role r WHERE r.user_id=u.user_id AND r.role_id=1 AND r.active=1) admin FROM user u WHERE session_token=? AND user_status=1 AND last_login>DATE_SUB(NOW(),INTERVAL 8 HOUR)',
-                [token]
-            );
+            const u = await sessions.find(pool, token);
             if (!u)
                 return res.status(401).json({
                     error: 'La sesión expiró o fue cerrada. Vuelve a ingresar.'
                 });
-            req.headers.authorization = 'Bearer ' + token;
             req.security = { user: u, ...Usuario.desde(u).obtenerPermisos() };
             if (
                 u.must_reset_password &&
@@ -118,7 +119,7 @@ module.exports = function (app, pool) {
                     .status(428)
                     .json({ error: 'Debes cambiar tu contraseña temporal.' });
             if (url.startsWith('/api/v3/') || url.startsWith('/api/v4/'))
-                return next(); // Versioned routes retain their additional role checks.
+                return require('./versioned-policy')(req, res, next);
             if (req.body && typeof req.body === 'object') {
                 req.body.usuario = u.first_name;
                 req.body.creador = u.first_name;
@@ -161,14 +162,37 @@ module.exports = function (app, pool) {
             if (
                 (req.method === 'GET' || req.method === 'HEAD') &&
                 (READ_USER.has(url) || url.startsWith('/manuales/'))
-            )
+            ) {
+                if (url.startsWith('/manuales/') && url !== '/manuales/') {
+                    if (!/\.pdf$/i.test(url)) return res.sendStatus(404);
+                    res.setHeader(
+                        'Content-Security-Policy',
+                        "sandbox; default-src 'none'"
+                    );
+                    res.type('application/pdf');
+                }
                 return next();
+            }
             if (url === '/sesion/verificar' || url === '/sesion/cerrar')
                 return next();
             if (url === '/incidente' || url.startsWith('/incidente/')) {
-                const code =
-                    req.body?.id_ticket ||
-                    url.match(/^\/incidente\/([^/]+)\//)?.[1];
+                // Los GET usan exclusivamente el código de la ruta; un body o query no puede sustituirlo.
+                const routeCode = url.match(
+                    /^\/incidente\/([^/]+)\/(materiales|etiqueta-pdf|qr|adjuntos-zip)$/
+                )?.[1];
+                const code = ['GET', 'HEAD'].includes(req.method)
+                    ? routeCode
+                    : req.body?.id_ticket;
+                const multipartComment =
+                    req.method === 'POST' &&
+                    url === '/incidente/comentar' &&
+                    /^multipart\/form-data(?:;|$)/i.test(
+                        req.headers['content-type'] || ''
+                    );
+                if (url !== '/incidente' && !code && !multipartComment)
+                    return res
+                        .status(400)
+                        .json({ error: 'Indica el ticket de la operación.' });
                 if (code) {
                     const [[t]] = await pool.query(
                         'SELECT requester_user_id,assigned_user_id,is_archived FROM ticket WHERE ticket_code=?',

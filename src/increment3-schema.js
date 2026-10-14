@@ -132,4 +132,5 @@ module.exports = async function migrate(pool) {
     );
     await require('./identity-schema')(pool);
     await require('./increment4/schema')(pool);
+    await require('./security-schema')(pool);
 };

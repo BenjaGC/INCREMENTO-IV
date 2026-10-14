@@ -38,7 +38,6 @@ function clinicUI() {
                 body.append('archivo', file);
                 const r = await fetch('/usuarios/importar-csv', {
                     method: 'POST',
-                    headers: { Authorization: 'Bearer ' + this.usuario.token },
                     body
                 });
                 const d = await r.json();
@@ -55,8 +54,7 @@ function clinicUI() {
             this.backupMessage = 'Preparando respaldo SQL…';
             try {
                 const r = await fetch('/admin/respaldo', {
-                    method: 'POST',
-                    headers: { Authorization: 'Bearer ' + this.usuario.token }
+                    method: 'POST'
                 });
                 if (!r.ok) {
                     const d = await r.json();
@@ -85,8 +83,7 @@ function clinicUI() {
                 const r = await fetch('/incidente/escalar', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: 'Bearer ' + this.usuario.token
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         id_ticket: this.detTicket.id_ticket,

@@ -190,7 +190,7 @@ const { chromium, expect } = require("@playwright/test");
           forwarded: "fake",
         })
       ).status,
-      423,
+      200,
     );
     await stop();
     await launch();
@@ -199,7 +199,7 @@ const { chromium, expect } = require("@playwright/test");
       423,
     );
     check(
-      "Cinco errores bloquean cuenta e IP; otra cuenta y reiniciar no evaden el bloqueo.",
+      "Cinco errores bloquean la combinación cuenta e IP; otra cuenta sigue disponible y reiniciar no evade el bloqueo.",
     );
     await db.query(
       "UPDATE inc4_access_guard SET blocked_until=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE blocked_until IS NOT NULL",
@@ -470,7 +470,7 @@ const { chromium, expect } = require("@playwright/test");
     );
     await page.getByRole("button", { name: "Cerrar configuración" }).click();
     for (let attempt = 0; attempt < 5; attempt++)
-      await directAttempt("22222222-2", "ClaveIncorrecta!", "192.0.2.16");
+      await directAttempt("22222222-2", "ClaveIncorrecta!", "127.0.0.1");
     const blockedContext = await browser.newContext({
       viewport: { width: 1440, height: 1040 },
       locale: "es-CL",

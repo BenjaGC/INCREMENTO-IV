@@ -1,6 +1,10 @@
 const { WebSocketServer, WebSocket } = require('ws');
+const sessions = require('./session');
 
-module.exports = function attachAvailability(server, { pool, snapshot, log }) {
+module.exports = function attachAvailability(
+    server,
+    { pool, snapshot, log, clientIp }
+) {
     const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
     const peers = new Map();
     let pending = 0;
@@ -10,7 +14,10 @@ module.exports = function attachAvailability(server, { pool, snapshot, log }) {
         try {
             validOrigin =
                 !req.headers.origin ||
-                new URL(req.headers.origin).host === req.headers.host;
+                (process.env.NODE_ENV === 'production'
+                    ? req.headers.origin ===
+                      new URL(process.env.PUBLIC_ORIGIN).origin
+                    : new URL(req.headers.origin).host === req.headers.host);
         } catch {
             validOrigin = false;
         }
@@ -18,7 +25,7 @@ module.exports = function attachAvailability(server, { pool, snapshot, log }) {
             socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
             return socket.destroy();
         }
-        const ip = req.socket.remoteAddress;
+        const ip = clientIp ? clientIp(req) : req.socket.remoteAddress;
         const peer = peers.get(ip) || { clients: 0, pending: 0 };
         if (
             wss.clients.size >= 64 ||
@@ -32,10 +39,10 @@ module.exports = function attachAvailability(server, { pool, snapshot, log }) {
             return socket.destroy();
         }
         wss.handleUpgrade(req, socket, head, (ws) =>
-            wss.emit('connection', ws, ip)
+            wss.emit('connection', ws, ip, req)
         );
     });
-    wss.on('connection', (ws, ip) => {
+    wss.on('connection', (ws, ip, req) => {
         const peer = peers.get(ip) || { clients: 0, pending: 0 };
         peers.set(ip, peer);
         peer.clients++;
@@ -53,9 +60,10 @@ module.exports = function attachAvailability(server, { pool, snapshot, log }) {
             busy = true;
             try {
                 const [[u]] = await pool.query(
-                    `SELECT u.user_id FROM user u WHERE u.session_token=? AND u.user_status=1 AND u.must_reset_password=0 AND u.last_login>DATE_SUB(NOW(),INTERVAL 8 HOUR) AND EXISTS(SELECT 1 FROM user_role r WHERE r.user_id=u.user_id AND r.role_id=1 AND r.active=1)`,
-                    [token]
+                    `SELECT u.user_id FROM user u WHERE u.session_token_hash=? AND u.user_status=1 AND u.must_reset_password=0 AND u.last_login>DATE_SUB(NOW(),INTERVAL 8 HOUR) AND EXISTS(SELECT 1 FROM user_role r WHERE r.user_id=u.user_id AND r.role_id=1 AND r.active=1)`,
+                    [sessions.digest(token)]
                 );
+                if (ws.readyState !== WebSocket.OPEN) return;
                 if (!u) {
                     ws.close(4403, 'Acceso denegado');
                     return;
@@ -96,11 +104,12 @@ module.exports = function attachAvailability(server, { pool, snapshot, log }) {
                 const msg = JSON.parse(raw);
                 if (
                     msg.type !== 'auth' ||
-                    typeof msg.token !== 'string' ||
-                    !/^[a-f0-9]{64}$/.test(msg.token)
+                    (!sessions.valid(msg.token) &&
+                        (!req.headers.origin ||
+                            !sessions.valid(sessions.read(req).token)))
                 )
                     throw Error();
-                token = msg.token;
+                token = msg.token || sessions.read(req).token;
                 send();
             } catch {
                 ws.close(4401, 'Autenticación inválida');

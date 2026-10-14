@@ -13,8 +13,13 @@ const registrationPolicy = require('./registration-policy');
 const app = express();
 const httpSecurity = require('./http-security');
 httpSecurity.install(app);
-if (process.env.TRUST_PROXY_HOPS)
-    app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS));
+if (process.env.CLINICA_TRUSTED_PROXIES)
+    app.set(
+        'trust proxy',
+        require('proxy-addr').compile(
+            process.env.CLINICA_TRUSTED_PROXIES.split(',').map((s) => s.trim())
+        )
+    );
 const PORT = Number(process.env.PORT || 3000);
 
 // ==========================================
@@ -67,7 +72,7 @@ const storageManual = multer.diskStorage({
             /[^a-zA-Z0-9._\-áéíóúÁÉÍÓÚñÑ ]/g,
             '_'
         );
-        const uniqueSuffix = Date.now() + '-';
+        const uniqueSuffix = crypto.randomBytes(16).toString('hex') + '-';
         cb(null, uniqueSuffix + safeName);
     }
 });
@@ -239,24 +244,7 @@ async function marcarNotificacionCreador(
 // HELPER: Construir ticket desde fila DB
 // ==========================================
 async function ocultarEvidenciasEliminadas(comments, ticketId) {
-    for (const c of comments)
-        c.texto = require('sanitize-html')(c.texto || '', {
-            allowedTags: [
-                'a',
-                'img',
-                'br',
-                'p',
-                'strong',
-                'b',
-                'em',
-                'ul',
-                'ol',
-                'li'
-            ],
-            allowedAttributes: { a: ['href', 'target'], img: ['src', 'alt'] },
-            allowedSchemes: ['http', 'https'],
-            allowProtocolRelative: false
-        });
+    for (const c of comments) c.texto = require('./comment-html')(c.texto);
     const [deleted] = await pool.query(
         'SELECT file_path FROM attachment WHERE ticket_id=? AND is_deleted=1',
         [ticketId]
@@ -791,11 +779,9 @@ function enviarNotificacionAdminDerivado(destinatario, ticketData) {
 
 app.post('/registro', async (req, res) => {
     if (!registrationPolicy.enabled())
-        return res
-            .status(403)
-            .json({
-                error: 'El alta de usuarios debe solicitarse al administrador de la clínica.'
-            });
+        return res.status(403).json({
+            error: 'El alta de usuarios debe solicitarse al administrador de la clínica.'
+        });
     const { nombre, rut, correo, password } = req.body;
     if (
         typeof nombre !== 'string' ||
@@ -827,7 +813,12 @@ app.post('/registro', async (req, res) => {
         if (existing.length > 0)
             return res
                 .status(400)
-                .json({ error: 'El RUT ya está registrado.' });
+                .json({
+                    error:
+                        process.env.NODE_ENV === 'production'
+                            ? 'No se pudo completar el registro. Contacta al administrador.'
+                            : 'El RUT ya está registrado.'
+                });
 
         const correoFinal =
             correo && correo.trim() !== ''
@@ -883,12 +874,9 @@ app.post('/validar-rut', (req, res) => {
 
 // El inicio de sesión se registra en src/increment4/login-security.js.
 app.post('/sesion/verificar', async (req, res) => {
-    const { rut, token } = req.body;
-    if (!rut || !token) return res.json({ valida: false });
-
     try {
         const user = req.security.user;
-        const valida = user.rut === rut && user.session_token === token;
+        const valida = !req.body.rut || user.rut === req.body.rut;
         res.json(
             valida
                 ? {
@@ -909,8 +897,8 @@ app.post('/sesion/verificar', async (req, res) => {
 app.post('/sesion/cerrar', async (req, res) => {
     try {
         await pool.query(
-            'UPDATE user SET session_token = NULL WHERE user_id = ? AND session_token = ?',
-            [req.security.user.user_id, req.security.user.session_token]
+            'UPDATE user SET session_token_hash = NULL WHERE user_id = ? AND session_token_hash = ?',
+            [req.security.user.user_id, req.security.user.session_token_hash]
         );
         res.json({ success: true });
     } catch (error) {
@@ -1440,18 +1428,30 @@ app.post('/incidente/comentar', (req, res) => {
                         ' MB.'
                 });
             }
-            return res
-                .status(400)
-                .json({
-                    error: 'La carga contiene demasiados archivos o campos.'
-                });
+            return res.status(400).json({
+                error: 'La carga contiene demasiados archivos o campos.'
+            });
         } else if (err) {
             return res
                 .status(500)
                 .json({ error: 'Error al subir el archivo.' });
         }
 
+        let validBody = false;
+        httpSecurity.validate(req, res, () => {
+            validBody = true;
+        });
+        if (!validBody) {
+            fileSafety.remove(req.file);
+            return;
+        }
         const { id_ticket, texto } = req.body;
+        if (typeof id_ticket !== 'string' || !id_ticket.trim()) {
+            fileSafety.remove(req.file);
+            return res
+                .status(400)
+                .json({ error: 'Indica el ticket de la operación.' });
+        }
         const usuario = req.actor.first_name;
         const file = req.file;
 
@@ -4355,7 +4355,7 @@ app.get('/manuales', async (req, res) => {
             .filter((f) => /\.pdf$/i.test(f))
             .map((f) => {
                 const stat = fs.statSync(path.join(manualesDir, f));
-                const nombreOriginal = f.replace(/^\d+-/, '');
+                const nombreOriginal = f.replace(/^(?:\d+|[a-f0-9]{32})-/, '');
                 return {
                     filename: f,
                     nombre: nombreOriginal,
@@ -4394,11 +4394,9 @@ app.post('/manuales/subir', (req, res) => {
                         ' MB.'
                 });
             }
-            return res
-                .status(400)
-                .json({
-                    error: 'La carga contiene demasiados archivos o campos.'
-                });
+            return res.status(400).json({
+                error: 'La carga contiene demasiados archivos o campos.'
+            });
         } else if (err) {
             return res.status(400).json({ error: err.message });
         }

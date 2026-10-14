@@ -1,5 +1,7 @@
 # Instalación nueva
 
+La plantilla viene en `production` y el servidor rechaza configuraciones incompletas. El ejemplo de los apartados 2 y 3 elige expresamente `development` solo para practicar en loopback. Para una instalación de la clínica completar también [DESPLIEGUE-CLINICA.md](DESPLIEGUE-CLINICA.md); no exponer el modo de desarrollo a la red.
+
 ## 1. Requisitos
 
 Instalar Node.js 24 (la versión mínima admitida es 22.12.0), npm y MySQL 8.4. Usar una base exclusiva para esta aplicación. En Windows se recomienda instalar MySQL como servicio; `npm start` no instala ni arranca MySQL.
@@ -120,7 +122,9 @@ Detener escrituras durante el respaldo para mantener consistencia entre SQL y ar
 
 No exponer el puerto de desarrollo directamente a Internet. Hace falta un servidor administrado, HTTPS mediante proxy, acceso de red controlado y arranque automático. En NODE_ENV=production se exigen configuración de correo, PUBLIC_ORIGIN HTTPS, directorio de respaldos y una cuenta MySQL diferente de root. Definir CLINICA_DATA_DIR fuera del código para conservar archivos entre actualizaciones.
 
-TRUST_PROXY_HOPS solo debe configurarse cuando el backend acepte conexiones únicamente del proxy confiable. Un PUBLIC_ORIGIN con https no instala certificados por sí solo.
+Configurar `CLINICA_TRUSTED_PROXIES` con las direcciones reales del proxy autorizado; por ejemplo `127.0.0.1,::1` si está en el mismo servidor. `TRUST_PROXY_HOPS` ya no se admite: eliminarlo de una configuración anterior. Se exige `CLINICA_DATA_DIR` privado y `CLINICA_RECOVERY_SECRET` aleatorio de al menos 32 caracteres en producción. Un PUBLIC_ORIGIN con https no instala certificados por sí solo.
+
+La migración convierte contraseñas heredadas a bcrypt antes de permitir acceso. Una credencial heredada vacía, demasiado corta o que exceda 72 bytes requiere recuperación autorizada. Se revocan los tokens antiguos en claro; los usuarios vuelven a iniciar sesión. Las sesiones nuevas solo dejan un hash en la base. Respaldar antes de actualizar y conservar el secreto de recuperación de forma privada.
 
 El servidor actual realiza ampliaciones al arrancar. Antes de actualizar: detener escrituras, respaldar base y archivos, comprobar la actualización en una copia y arrancar una sola instancia. Esta entrega no incluye un despliegue configurado para la clínica ni prueba de carga multiinstancia.
 

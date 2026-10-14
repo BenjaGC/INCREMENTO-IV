@@ -23,7 +23,7 @@ module.exports = function registerIncrement4(
             const [blocked] =
                 await pool.query(`SELECT g.user_id,u.first_name,g.source_ip,g.scope,g.failures,g.blocked_until,g.manual_unlock,g.updated_at
             FROM inc4_access_guard g LEFT JOIN user u ON u.user_id=g.user_id
-            WHERE g.manual_unlock=1 OR g.blocked_until>NOW() ORDER BY g.updated_at DESC LIMIT 100`);
+            WHERE g.scope='account_ip' AND (g.manual_unlock=1 OR g.blocked_until>NOW()) ORDER BY g.updated_at DESC LIMIT 100`);
             const [events] =
                 await pool.query(`SELECT e.id,e.created_at,e.event_type,e.source_ip,e.detail,u.first_name
             FROM inc4_security_event e LEFT JOIN user u ON u.user_id=e.user_id ORDER BY e.id DESC LIMIT 100`);

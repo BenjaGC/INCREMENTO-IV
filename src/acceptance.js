@@ -15,25 +15,17 @@ module.exports = function registerAcceptance(
 ) {
     const admin = async (req, res, next) => {
         try {
-            const token = (req.headers.authorization || '').replace(
-                /^Bearer /,
-                ''
-            );
-            if (!token)
+            if (!req.security)
                 return res
                     .status(401)
                     .json({ error: 'Inicia sesión para continuar.' });
-            const [users] = await pool.query(
-                "SELECT DISTINCT u.user_id,u.first_name FROM user u JOIN user_role ur ON ur.user_id=u.user_id JOIN role r ON r.role_id=ur.role_id WHERE u.session_token=? AND u.user_status=1 AND ur.active=1 AND r.role_name='Admin'",
-                [token]
-            );
-            if (!users.length)
+            if (!req.security.admin)
                 return res
                     .status(403)
                     .json({
                         error: 'Se requiere una sesión de administrador activa.'
                     });
-            req.actor = users[0];
+            req.actor = req.security.user;
             next();
         } catch (e) {
             next(e);

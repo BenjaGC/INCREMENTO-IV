@@ -1,13 +1,13 @@
 # Manual de presentación e instalación
 ## Ticketera Clínica Aconcagua - Incremento IV
 
-Grupo 11 | Entrega revisada el 12 de octubre de 2026
+Grupo 11 | Entrega revisada el 14 de octubre de 2026
 
 Esta guía sirve para presentar desde el computador de un compañero y para instalar en un equipo administrado por TI de la clínica. El repositorio entrega el código; GitHub no enciende el sistema ni hospeda su base de datos.
 
 Repositorio: https://github.com/BenjaGC/INCREMENTO-IV
 
-Versión que debe descargarse: incremento-iv-20261012, disponible en Releases. Utilizar el archivo Ticketera-Clinica-Aconcagua-Incremento-IV.zip y extraerlo antes de abrirlo en Visual Studio Code.
+Versión que debe descargarse: incremento-iv-20261014, disponible en Releases. Utilizar el archivo Ticketera-Clinica-Aconcagua-Incremento-IV.zip y extraerlo antes de abrirlo en Visual Studio Code.
 
 ### Elegir el recorrido
 | Situación | Qué hacer |
@@ -41,7 +41,7 @@ El sistema es un monolito modular de tres capas: interfaz HTML/CSS/JavaScript co
 Instalar Node.js 24 y MySQL Server 8.4. Workbench es opcional: permite administrar MySQL, pero no reemplaza al servidor. En Windows, iniciar el servicio MySQL desde Servicios; su nombre depende de la instalación. Si MySQL no está instalado como servicio, pedir al responsable el método de arranque utilizado.
 
 ### Paso 2. Descargar y abrir la aplicación
-En el repositorio, abrir Releases, seleccionar incremento-iv-20261012 y descargar el ZIP de instalación. Extraerlo en una carpeta propia; abrir la carpeta que contiene package.json en Visual Studio Code. Abrir Terminal > Nueva terminal y comprobar:
+En el repositorio, abrir Releases, seleccionar incremento-iv-20261014 y descargar el ZIP de instalación. Extraerlo en una carpeta propia; abrir la carpeta que contiene package.json en Visual Studio Code. Abrir Terminal > Nueva terminal y comprobar:
 
 ```powershell
 node --version
@@ -167,7 +167,7 @@ Los correos requieren SMTP configurado y recepción comprobada en el buzón. Si 
 Abrir el menú de perfil y la opción de Apariencia. Cambiar entre claro y oscuro; recorrer la bandeja y un detalle para comprobar legibilidad. La preferencia se conserva por cuenta en ese navegador. No implica que un cambio se copie automáticamente a otro computador.
 
 ### Seguridad de acceso
-Abrir Administración > Seguridad de acceso. Mostrar los accesos y los controles de bloqueo. Tras cinco intentos fallidos, la cuenta y la IP se bloquean temporalmente durante 30 minutos. Un administrador puede revisar y desbloquear, dejando un motivo auditado.
+Abrir Administración > Seguridad de acceso. Mostrar los accesos y los controles de bloqueo. Tras cinco intentos fallidos se bloquea la combinación de cuenta y origen durante 30 minutos; las cuentas administrativas requieren revisión manual para ese origen. Otras cuentas de la misma red siguen disponibles. Entre distintos orígenes se aplica una espera progresiva breve por cuenta.
 
 Para mostrarlo sin perder el acceso administrativo:
 1. Mantener abierta la ventana del administrador.
@@ -176,7 +176,7 @@ Para mostrarlo sin perder el acceso administrativo:
 4. Ejecutar el desbloqueo con un motivo de al menos 10 caracteres, por ejemplo "Identidad de prueba verificada".
 5. Ingresar con la clave correcta y comprobar que recupera el acceso.
 
-No ejecutar esta prueba con la cuenta administradora real de la clínica. Como ambas ventanas usan la misma IP, el bloqueo puede afectar nuevos inicios de sesión desde ese PC. La sesión administrativa existente permite gestionar el desbloqueo.
+No ejecutar esta prueba con la cuenta administradora real de la clínica. El bloqueo afecta a la cuenta de prueba desde ese origen; no bloquea a todas las personas de la red. La sesión administrativa existente permite gestionar el desbloqueo.
 
 Si un administrador autorizado quedó bloqueado y no hay otro acceso, TI puede usar la terminal de esa instalación:
 
@@ -272,6 +272,7 @@ NODE_ENV=production
 PORT=3000
 CLINICA_BIND_ADDRESS=127.0.0.1
 CLINICA_PUBLIC_REGISTRATION=false
+CLINICA_TRUSTED_PROXIES=127.0.0.1,::1
 PUBLIC_ORIGIN=https://ticketera.DOMINIO-DE-LA-CLINICA
 CLINICA_DATA_DIR=C:/ClinicaAconcagua/datos
 CLINICA_BACKUP_DIR=C:/ClinicaAconcagua/respaldos
@@ -280,7 +281,7 @@ CLINICA_BACKUP_DIR=C:/ClinicaAconcagua/respaldos
 Configurar SMTP_HOST, SMTP_PORT, SMTP_SECURE, MAIL_USER, MAIL_PASSWORD y MAIL_FROM según el proveedor. El arranque de producción exige correo configurado, origen HTTPS, carpeta de respaldos y cuenta MySQL diferente de root. La presencia de estos valores no prueba por sí sola que el correo llegue.
 
 ### Una instalación central para los funcionarios
-El proxy sirve HTTPS y se conecta a 127.0.0.1:3000. Debe conservar el host público y establecer X-Forwarded-Proto. Solo después de restringir el backend al proxy confiable, configurar TRUST_PROXY_HOPS=1 si hay exactamente un proxy. Otra topología requiere evaluación de TI.
+El proxy sirve HTTPS y se conecta a 127.0.0.1:3000. Debe conservar el host público y establecer X-Forwarded-Proto. TI define sus direcciones en CLINICA_TRUSTED_PROXIES; ya no se acepta TRUST_PROXY_HOPS. Configurar además CLINICA_RECOVERY_SECRET con al menos 32 caracteres aleatorios privados y conservarlo. Producción exige estas variables y el directorio privado de datos.
 
 Los funcionarios abren la dirección HTTPS en sus navegadores. No deben instalar cada uno una base independiente ni utilizar localhost del computador del presentador. PUBLIC_ORIGIN no instala un certificado. GitHub Pages no ejecuta esta aplicación.
 
@@ -288,7 +289,7 @@ Los funcionarios abren la dirección HTTPS en sus navegadores. No deben instalar
 # 9. Arranque, respaldo y recuperación
 
 ### Operación diaria
-TI registra un servicio o tarea administrada que ejecute node server.js desde la carpeta de la aplicación, con acceso a la configuración y a los directorios privados. MySQL debe iniciar antes que Node. Mantener una sola instancia; algunos controles transitorios y códigos de recuperación viven en la memoria del proceso.
+TI registra un servicio o tarea administrada que ejecute node server.js desde la carpeta de la aplicación, con acceso a la configuración y a los directorios privados. MySQL debe iniciar antes que Node. Mantener una sola instancia; algunos límites HTTP y la programación siguen siendo locales al proceso. Los códigos, vencimientos e intentos de recuperación persisten protegidos en MySQL.
 
 Comprobar /health/live para el proceso y /health/ready para su preparación. Confirmar persistencia después de reiniciar. Los registros de servicio se guardan en un destino privado, no en el repositorio.
 
@@ -369,7 +370,7 @@ Abrir el perfil, cambiar a oscuro y regresar a claro.
 ### 3:25 a 4:20 - Seguridad de acceso
 Abrir Seguridad de acceso. Mostrar una prueba preparada o revisar la lista sin bloquear cuentas reales.
 
-"Tras cinco intentos fallidos se aplica un bloqueo temporal a la cuenta y la IP. El administrador puede revisar la actividad y desbloquear con una justificación registrada. La cuenta administradora se crea desde una herramienta local autorizada; el registro público no permite conceder esos permisos."
+"Tras cinco intentos fallidos se bloquea la combinación de cuenta y origen. El administrador puede revisar la actividad y desbloquear con una justificación registrada. Otras cuentas de esa red mantienen su acceso. La cuenta administradora se crea desde una herramienta local autorizada; el registro público no permite conceder esos permisos."
 
 ### 4:20 a 5:10 - Trazas y respaldo
 Abrir Mantenimiento de trazas y mostrar política e historial.
@@ -384,7 +385,7 @@ Mostrar Administración y terminar con la guía de instalación.
 <!-- page -->
 # 12. Seguridad: resultados y límites
 
-La revisión del 12 de octubre se realizó en localhost, bases temporales y cuentas de prueba. Se corrigieron problemas reproducidos; no se intentó acceder a infraestructura ajena ni se atacó la base operativa. El informe y los resultados se publican en docs del repositorio.
+La revisión del 14 de octubre se realizó en localhost, bases temporales y cuentas de prueba. Se corrigieron problemas reproducidos; no se intentó acceder a infraestructura ajena ni se atacó la base operativa. El informe y los resultados se publican en docs del repositorio.
 
 ### Cambios principales
 | Área | Resultado de la revisión |
@@ -398,7 +399,7 @@ La revisión del 12 de octubre se realizó en localhost, bases temporales y cuen
 | Producción | Autorregistro cerrado por defecto; escucha local por defecto y validación de HTTPS detrás del proxy configurado. |
 
 ### Qué no prueba esta revisión
-Una prueba local no garantiza ausencia total de vulnerabilidades, capacidad de carga de la clínica ni resistencia a ataques distribuidos. La política CSP conserva unsafe-eval para Alpine. La validación de firmas no es un antivirus ni una inspección completa del contenido de PDF. TI debe completar protección perimetral, análisis antimalware y gestión de credenciales.
+Una prueba local no garantiza ausencia total de vulnerabilidades, capacidad de carga de la clínica ni resistencia a ataques distribuidos. Las expresiones del HTML se compilan antes de distribuir y no se autoriza unsafe-eval en ejecución. La validación de firmas no es un antivirus ni una inspección completa del contenido de PDF. TI debe completar protección perimetral, análisis antimalware y gestión de credenciales.
 
 Las contraseñas web se almacenan con hash bcrypt; eso no significa que toda la base esté cifrada. El correo y códigos de recuperación no constituyen autenticación multifactor obligatoria de todos los inicios de sesión. No se otorga certificación ISO/IEC 25010 con estas pruebas.
 
@@ -412,7 +413,7 @@ npm run verify:delivery
 npm audit
 ```
 
-Consultar docs/REVISION-SEGURIDAD-20261012.md y docs/ARQUITECTURA-Y-MANTENIMIENTO.md. Referencias: Express, Security Best Practices; OWASP, REST Security Cheat Sheet y Web Security Testing Guide. Son guías de revisión, no certificaciones del proyecto.
+Consultar docs/REVISION-SEGURIDAD-20261014.md y docs/ARQUITECTURA-Y-MANTENIMIENTO.md. Referencias: Express, Security Best Practices; OWASP, REST Security Cheat Sheet y Web Security Testing Guide. Son guías de revisión, no certificaciones del proyecto.
 
 <!-- page -->
 # 13. Aceptación y feedback de la clínica

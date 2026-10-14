@@ -64,8 +64,9 @@ function install(app) {
         );
         res.setHeader(
             'Content-Security-Policy',
-            "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
         );
+        if (!require('./session').originAllowed(req)) return res.status(403).json({error:'Origen de la solicitud no autorizado.'});
         if (process.env.NODE_ENV === 'production') {
             if (req.secure)
                 res.setHeader('Strict-Transport-Security', 'max-age=15552000');

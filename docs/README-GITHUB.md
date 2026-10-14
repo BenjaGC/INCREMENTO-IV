@@ -4,8 +4,8 @@ Sistema de soporte informático con tickets, seguimiento SLA, inventario, report
 
 ## Descargar e instalar
 
-- [Descargar el paquete revisado del Incremento IV](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/incremento-iv-20261012/Ticketera-Clinica-Aconcagua-Incremento-IV.zip)
-- [Ver la entrega descargable y sus huellas SHA-256](https://github.com/BenjaGC/INCREMENTO-IV/releases/tag/incremento-iv-20261012)
+- [Descargar el paquete revisado del Incremento IV](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/incremento-iv-20261014/Ticketera-Clinica-Aconcagua-Incremento-IV.zip)
+- [Ver la entrega descargable y sus huellas SHA-256](https://github.com/BenjaGC/INCREMENTO-IV/releases/tag/incremento-iv-20261014)
 - [Manual PDF para presentar e instalar en la clínica](Manual-presentacion-instalacion-clinica.pdf)
 - [Manual editable y guion de presentación](MANUAL-PRESENTACION-CLINICA.md)
 - [Paso a paso desde GitHub](INSTALACION-DESDE-GITHUB.md)
@@ -23,9 +23,9 @@ El código está en la raíz del repositorio; las instrucciones y los resultados
 
 Código preparado para revisión e instalación en un entorno de prueba. No incluye usuarios, contraseñas, tickets, adjuntos ni credenciales de la instalación local. La publicación de este repositorio no constituye un despliegue en la clínica.
 
-Entrega revisada el **12 de octubre de 2026**. Las siete suites de instalación, seguridad, regresión e interfaz terminaron correctamente en bases aisladas. Se corrigieron una caída por solicitudes malformadas y un cierre de sesión incompleto, y se reforzaron cargas de archivos, Excel, destinos externos y límites de recursos. Consultar la [revisión de seguridad y sus límites](REVISION-SEGURIDAD-20261012.md) y los [resultados finales](RESULTADOS-VERIFICACION-20261012.json). Los servicios institucionales y el servidor de destino aún deben configurarse y comprobarse con TI.
+Entrega revisada el **14 de octubre de 2026**. Las siete suites de instalación, seguridad, regresión e interfaz terminaron correctamente en bases aisladas. Se revisó el informe del compañero: sesión HttpOnly sin token en localStorage, hash de sesión en MySQL, recuperación persistente con límites, configuración de producción cerrada, proxies explícitos, permisos centrales y CSP sin unsafe-eval. Se conservan las correcciones anteriores de archivos, entradas y disponibilidad. Consultar la [revisión de seguridad y sus límites](REVISION-SEGURIDAD-20261014.md) y los [resultados finales](RESULTADOS-VERIFICACION-20261014.json). Los servicios institucionales y el servidor de destino aún deben configurarse y comprobarse con TI.
 
-El servidor escucha en `127.0.0.1` por defecto. En producción el autorregistro está cerrado, se exige HTTPS y TI debe habilitar los hosts y puertos de destinos externos. El manual contiene instrucciones para presentar desde un PC propio y para instalar una instancia central en la clínica, además de respaldo, recuperación y aceptación del piloto.
+El servidor escucha en `127.0.0.1` por defecto. La plantilla exige producción; para practicar en localhost se elige development expresamente. En producción el autorregistro está cerrado y se exigen HTTPS, datos privados, secreto de recuperación y CLINICA_TRUSTED_PROXIES. TI debe habilitar los hosts y puertos de destinos externos. El manual contiene instrucciones para presentar desde un PC propio y para instalar una instancia central en la clínica, además de respaldo, recuperación y aceptación del piloto.
 
 ## Novedades del Incremento IV
 
@@ -70,6 +70,7 @@ Antes de iniciar, seguir el apartado de migraciones de [INSTALACION.md](INSTALAC
 | `npm start` | Arrancar el servidor; MySQL debe estar activo. Ctrl+C detiene ese proceso Node. |
 | `npm run dev` | Desarrollo con reinicio al cambiar archivos. |
 | `npm run check` | Comprobar sintaxis de código y scripts. |
+| `npm run build:csp` | Regenerar las expresiones precompiladas después de cambiar directivas HTML. |
 | `npm run db:init` | Instalar estructura base y catálogos en una base vacía. |
 | `npm run db:migrate` | Preparar las ampliaciones y los disparadores; consultar credenciales temporales en la guía. |
 | `npm run admin:create -- RUT "Nombre" correo` | Crear administrador localmente; requiere CLINICA_ADMIN_PASSWORD temporal. |

@@ -41,6 +41,7 @@ const entries = [
     'test-production-regression',
     'test-increment4',
     'test-adversarial',
+    'build-csp',
     'desbloquear-cuenta',
     'verificar-entrega',
     'test-server',
@@ -88,6 +89,7 @@ pkg.scripts = {
     'prepare:github': 'node scripts/preparar-github.cjs'
 };
 pkg.scripts['account:unlock'] = 'node scripts/desbloquear-cuenta.cjs';
+pkg.scripts['build:csp'] = 'node scripts/build-csp.cjs';
 pkg.scripts['test:increment4'] = 'node scripts/test-increment4.cjs';
 pkg.scripts['verify:delivery'] = 'node scripts/verificar-entrega.cjs';
 pkg.scripts['test:adversarial'] = 'node scripts/test-adversarial.cjs';
@@ -105,6 +107,10 @@ for (const p of [
     'docs/RESULTADOS-VERIFICACION-20261012.json',
     'docs/RESULTADOS-SEGURIDAD-20261012.json',
     'docs/RESULTADOS-PAQUETE-20261012.json',
+    'docs/REVISION-SEGURIDAD-20261014.md',
+    'docs/RESULTADOS-VERIFICACION-20261014.json',
+    'docs/RESULTADOS-SEGURIDAD-20261014.json',
+    'docs/RESULTADOS-PAQUETE-20261014.json',
     'docs/verificacion'
 ])
     copy(p);
@@ -115,7 +121,7 @@ fs.writeFileSync(
 const readme = fs
     .readFileSync(path.join(root, 'docs/README-GITHUB.md'), 'utf8')
     .replace(
-    /\]\(([^:)]+\.(?:md|pdf|json))\)/g,
+        /\]\(([^:)]+\.(?:md|pdf|json))\)/g,
         (_match, target) =>
             '](' + (target.startsWith('docs/') ? '' : 'docs/') + target + ')'
     );

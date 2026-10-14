@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Panel de Operaciones — Clínica Aconcagua</title>
+        <script src="/js/csp-expressions.js"></script>
         <script defer src="/vendor/alpine.min.js"></script>
         <script src="/vendor/jspdf.umd.min.js"></script>
         <script src="/vendor/chart.umd.min.js"></script>
@@ -5437,10 +5438,11 @@
                     <template x-if="v4Tab==='security'"
                         ><div>
                             <p class="v4-description">
-                                Cinco intentos fallidos consecutivos bloquean el
-                                acceso durante 30 minutos. Las cuentas
-                                administrativas requieren una revisión y
-                                desbloqueo manual. El bloqueo se conserva al
+                                Cinco intentos fallidos consecutivos bloquean la
+                                combinación de cuenta y origen durante 30 minutos.
+                                No bloquean otras cuentas que comparten la red.
+                                Las cuentas administrativas requieren una revisión y
+                                desbloqueo manual para ese origen. El bloqueo se conserva al
                                 reiniciar el servidor.
                             </p>
                             <div class="v4-actions">
