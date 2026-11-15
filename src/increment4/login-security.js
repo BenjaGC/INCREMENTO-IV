@@ -218,7 +218,16 @@ module.exports = function createLoginSecurity({ pool, transporter, log }) {
                 response = {
                     error: reachedLimit ? BLOCK_MESSAGE : INVALID_MESSAGE
                 };
-                if (reachedLimit) lockedUser = user;
+                if (reachedLimit) {
+                    lockedUser = user;
+                    // El bloqueo revoca también cualquier sesión emitida antes del quinto fallo.
+                    // Se hace en la misma transacción que el evento y el contador.
+                    if (user)
+                        await db.query(
+                            'UPDATE user SET session_token_hash=NULL WHERE user_id=?',
+                            [user.user_id]
+                        );
+                }
             } else {
                 const token = crypto.randomBytes(32).toString('hex');
                 await db.query(

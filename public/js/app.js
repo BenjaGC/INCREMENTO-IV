@@ -2813,8 +2813,13 @@ function app() {
         },
 
         intensidadColor(total, max) {
-            if (max === 0) return '#eee';
+            if (max === 0)
+                return this.v4Theme === 'dark' ? 'var(--surface-soft)' : '#eee';
             const pct = total / max;
+            if (this.v4Theme === 'dark') {
+                // Mantener legibles las cifras claras en toda la escala del mapa.
+                return `rgb(${Math.round(45 + pct * 80)},${Math.round(39 + pct * 12)},${Math.round(50 + pct * 8)})`;
+            }
             const r = Math.round(255 - pct * 45);
             const g = Math.round(230 - pct * 180);
             const b = Math.round(230 - pct * 200);

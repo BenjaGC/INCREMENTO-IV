@@ -88,6 +88,7 @@ const { chromium, expect } = require("@playwright/test");
       [1, "Administración de soporte", "11111111-1", 1, 0],
       [2, "Funcionario de pruebas", "22222222-2", 2, 0],
       [3, "Técnico de soporte", "33333333-3", 2, 1],
+      [4, "Administrador de continuidad", "44444444-4", 1, 0],
     ]) {
       await db.query(
         "INSERT INTO user(user_id,first_name,first_last_name,second_last_name,institutional_email,rut,username,password_hash,is_critical_tech) VALUES (?,?,'','',?,?,?,?,?)",
@@ -172,6 +173,9 @@ const { chromium, expect } = require("@playwright/test");
       0,
     );
     check("Inicio correcto antes del quinto intento reinicia los contadores.");
+    const beforeLock = (
+      await call("/login", null, { rut: "22222222-2", password })
+    ).data.token;
     for (let attempt = 0; attempt < 5; attempt++)
       assert.equal(
         (
@@ -182,6 +186,12 @@ const { chromium, expect } = require("@playwright/test");
         ).status,
         attempt === 4 ? 423 : 401,
       );
+    assert.equal(
+      (await call("/sesion/verificar", beforeLock)).status,
+      401,
+      "El quinto fallo debe revocar la sesión emitida antes del bloqueo.",
+    );
+    check("El bloqueo revoca la sesión anterior de la cuenta.");
     assert.equal(
       (
         await call("/login", null, {
@@ -224,9 +234,14 @@ const { chromium, expect } = require("@playwright/test");
       (await call("/login", null, { rut: "11111111-1", password })).status,
       423,
     );
+    const continuityAdmin = (
+      await call("/login", null, { rut: "44444444-4", password })
+    ).data.token;
+    assert.ok(continuityAdmin, "Un segundo administrador autoriza el desbloqueo.");
+    assert.equal((await call("/sesion/verificar", admin)).status, 401);
     assert.equal(
       (
-        await call("/api/v4/security/unlock", admin, {
+        await call("/api/v4/security/unlock", continuityAdmin, {
           user_id: 1,
           reason: "Verificación de identidad por soporte",
         })

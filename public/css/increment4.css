@@ -22,6 +22,27 @@
 :root[data-theme='dark'] .support-theme {
     --accent: #7dd3fc;
 }
+/* Contraste del texto pequeño, sin cambiar la distribución de las vistas. */
+.profile-avatar {
+    background: #526a84;
+}
+.tickets-table th {
+    color: #475569;
+}
+:root[data-theme='dark'] :is(.btn-green, .btn-blue, .new-incident) {
+    background: #1758a0;
+    color: #fff;
+}
+:root[data-theme='dark'] :is(.btn-green, .btn-blue, .new-incident):hover {
+    background: #12477f;
+}
+:root[data-theme='dark'] :is(.view-tabs, .quick-filters) button:not(.active) {
+    color: var(--text-secondary);
+}
+:root[data-theme='dark'] .s-pendiente {
+    background: var(--surface-soft);
+    color: var(--text-secondary);
+}
 :root[data-theme='dark'] .acceptance-tools {
     background: var(--surface);
     color: var(--dark);
@@ -168,6 +189,9 @@
         .sidebar,
         .navbar,
         .modal-box,
+        .stats-box,
+        .stats-body,
+        .stats-header,
         .detail-window,
         .profile-dropdown,
         .notif-dropdown,

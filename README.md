@@ -15,8 +15,8 @@ Sistema de soporte informático con tickets, seguimiento SLA, inventario, report
 
 ## Descargar e instalar
 
-- [Descargar el paquete revisado del Incremento IV](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/incremento-iv-20261014/Ticketera-Clinica-Aconcagua-Incremento-IV.zip)
-- [Ver la entrega descargable y sus huellas SHA-256](https://github.com/BenjaGC/INCREMENTO-IV/releases/tag/incremento-iv-20261014)
+- [Descargar el paquete revisado del Incremento IV](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/entrega-final-20261115/Ticketera-Clinica-Aconcagua-Incremento-IV-Final.zip)
+- [Ver la entrega descargable y sus huellas SHA-256](https://github.com/BenjaGC/INCREMENTO-IV/releases/tag/entrega-final-20261115)
 - [Manual PDF para presentar e instalar en la clínica](docs/Manual-presentacion-instalacion-clinica.pdf)
 - [Manual editable y guion de presentación](docs/MANUAL-PRESENTACION-CLINICA.md)
 - [Paso a paso desde GitHub](docs/INSTALACION-DESDE-GITHUB.md)
@@ -29,6 +29,10 @@ El código está en la raíz del repositorio; las instrucciones y los resultados
 - [Incremento 1](https://github.com/BenjaGC/Incremento-1)
 - [Incremento 2](https://github.com/BenjaGC/Incremento-2)
 - [Incremento 3](https://github.com/BenjaGC/Incremento-3)
+
+## Página final actualizada - 15 de noviembre de 2026
+
+Código y ZIP final actualizados: revocación de sesión al quinto fallo, contraste en modo oscuro y accesibilidad del perfil. [Cambios y comprobaciones](docs/ACTUALIZACION-FINAL-20261115.md).
 
 ## Estado de la entrega
 

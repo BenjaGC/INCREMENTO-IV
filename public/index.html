@@ -331,9 +331,9 @@
                         class="profile-btn"
                         :class="usuario ? '' : 'guest'"
                         @click.stop="profileOpen=!profileOpen"
-                        aria-label="Menú de perfil"
                         :aria-expanded="profileOpen"
                     >
+                        <span class="sr-only">Menú de perfil:</span>
                         <span
                             class="profile-avatar"
                             x-show="usuario"
