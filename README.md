@@ -1,5 +1,12 @@
 # Ticketera Clínica Aconcagua — Incremento IV
 
+## Enlaces para la entrega al profesor
+
+- [Documentación: Documento 0 e Incrementos 1 a 4](https://github.com/BenjaGC/Proyecto-Clinica-Aconcagua)
+- **Este repositorio contiene el sistema.** [Ubicación de vistas, controladores y SQL](docs/MAPA-ENTREGA-PROFESOR.md).
+- [DDL completo](database/DDL.sql) y [DML inicial](database/DML.sql), con [instrucciones](database/README.md).
+
+
 <!-- FINAL-20261115 -->
 ## Entrega académica final actualizada
 
