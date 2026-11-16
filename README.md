@@ -1,23 +1,28 @@
-# Ticketera Clínica Aconcagua — Incremento IV
+# Incremento IV — Ticketera Clínica Aconcagua
 
-## Enlaces para la entrega al profesor
+Entrega vigente actualizada con el último ZIP recibido, del **16 de noviembre de 2026**.
 
-- [Documentación: Documento 0 e Incrementos 1 a 4](https://github.com/BenjaGC/Proyecto-Clinica-Aconcagua)
-- **Este repositorio contiene el sistema.** [Ubicación de vistas, controladores y SQL](docs/MAPA-ENTREGA-PROFESOR.md).
-- [DDL completo](database/DDL.sql) y [DML inicial](database/DML.sql), con [instrucciones](database/README.md).
+## Documentación del Incremento IV
 
+- [Ver la entrega completa](Entrega-academica/)
+- [Abrir el informe final](Entrega-academica/Incremento%204%20-%20Grupo%2011%20-%20Ingenieria%20Software.docx)
+- [Documento 0 e Incrementos 1 a 4](https://github.com/BenjaGC/Proyecto-Clinica-Aconcagua)
 
-<!-- FINAL-20261116 -->
-## Entrega académica final actualizada
+## Videos
 
-**16 de noviembre de 2026:** [documentos, diagramas, procesos Bizagi, planillas y evidencias vigentes](Entrega-academica/Final-20261116/). [Actualización y video testimonial final](https://github.com/BenjaGC/INCREMENTO-IV/releases/tag/actualizacion-incremento4-20261116). El código y las instrucciones de instalación se conservan.
+- [Grabación del cliente](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/entrega-final-20261115/I4-Carta-de-Aceptacion-y-Video-de-Cliente-Grabacion-de-pantalla-Cliente.mp4)
+- [Guía de instalación local](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/entrega-final-20261115/I4-Presentacion-Incremento-IV---Grupo-11-Guia-instalacion-Local.mov)
+- [Video testimonial final](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/actualizacion-incremento4-20261116/I4-Video-testimonial-final-20261116.mp4)
 
-- [Carta de Aceptación y Video de Cliente/Grabación de pantalla Cliente.mp4](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/entrega-final-20261115/I4-Carta-de-Aceptacion-y-Video-de-Cliente-Grabacion-de-pantalla-Cliente.mp4)
-- [Presentación Incremento IV - Grupo 11/Guia instalacion Local.mov](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/entrega-final-20261115/I4-Presentacion-Incremento-IV---Grupo-11-Guia-instalacion-Local.mov)
-- [Carta de Aceptación y Video de Cliente/Video testimonial final.mp4](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/actualizacion-incremento4-20261116/I4-Video-testimonial-final-20261116.mp4)
+## Sistema e instalación
 
-[Versión académica anterior del 15 de noviembre](Entrega-academica/Final-20261115/).
-<!-- /FINAL-20261116 -->
+- [Instalación paso a paso](docs/INSTALACION.md)
+- [Descargar el sistema completo](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/entrega-final-20261115/Ticketera-Clinica-Aconcagua-Incremento-IV-Final.zip)
+- [Vistas, controladores y base de datos](docs/MAPA-ENTREGA-PROFESOR.md)
+- [Scripts DDL y DML](database/)
+
+<details>
+<summary>Manuales, funcionamiento y detalles técnicos</summary>
 
 Sistema de soporte informático con tickets, seguimiento SLA, inventario, reportes, manuales y administración. Backend Node.js/Express, base MySQL y frontend HTML/CSS/JavaScript con Alpine.js.
 
@@ -136,3 +141,5 @@ Las seis suites de verificación local terminaron correctamente. También se ins
 Este repositorio contiene la entrega de software e instalación. Las capturas compartidas con compañeros no forman parte de esta publicación.
 
 Para comprobar también la instalación inicial y el respaldo con archivos: `npm run test:install`. Requiere Python y mysqldump. Para el recorrido de PDF, instalar PyMuPDF con `python -m pip install pymupdf`.
+
+</details>
