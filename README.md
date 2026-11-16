@@ -7,16 +7,17 @@
 - [DDL completo](database/DDL.sql) y [DML inicial](database/DML.sql), con [instrucciones](database/README.md).
 
 
-<!-- FINAL-20261115 -->
+<!-- FINAL-20261116 -->
 ## Entrega académica final actualizada
 
-**15 de noviembre de 2026:** [documentos, diagramas, planillas, evidencias y presentación finales](Entrega-academica/Final-20261115/). [Videos finales y descargas](https://github.com/BenjaGC/INCREMENTO-IV/releases/tag/entrega-final-20261115). Esta entrega reemplaza la documentación académica anterior como referencia vigente; el código y la instalación revisados se conservan.
+**16 de noviembre de 2026:** [documentos, diagramas, procesos Bizagi, planillas y evidencias vigentes](Entrega-academica/Final-20261116/). [Actualización y video testimonial final](https://github.com/BenjaGC/INCREMENTO-IV/releases/tag/actualizacion-incremento4-20261116). El código y las instrucciones de instalación se conservan.
 
-- [Carta de Aceptación y Video de Cliente\Grabación de pantalla Cliente.mp4](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/entrega-final-20261115/I4-Carta-de-Aceptacion-y-Video-de-Cliente-Grabacion-de-pantalla-Cliente.mp4)
-- [Carta de Aceptación y Video de Cliente\Video Aceptación Cliente Clinica Aconcagua.mp4](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/entrega-final-20261115/I4-Carta-de-Aceptacion-y-Video-de-Cliente-Video-Aceptacion-Cliente-Clinica-Aconcagua.mp4)
-- [Presentación Incremento IV - Grupo 11\Guia instalacion Local.mov](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/entrega-final-20261115/I4-Presentacion-Incremento-IV---Grupo-11-Guia-instalacion-Local.mov)
-- [Presentación Incremento IV - Grupo 11\Video Presentación Incremento IV.mp4](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/entrega-final-20261115/I4-Presentacion-Incremento-IV---Grupo-11-Video-Presentacion-Incremento-IV.mp4)
-<!-- /FINAL-20261115 -->
+- [Carta de Aceptación y Video de Cliente/Grabación de pantalla Cliente.mp4](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/entrega-final-20261115/I4-Carta-de-Aceptacion-y-Video-de-Cliente-Grabacion-de-pantalla-Cliente.mp4)
+- [Presentación Incremento IV - Grupo 11/Guia instalacion Local.mov](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/entrega-final-20261115/I4-Presentacion-Incremento-IV---Grupo-11-Guia-instalacion-Local.mov)
+- [Carta de Aceptación y Video de Cliente/Video testimonial final.mp4](https://github.com/BenjaGC/INCREMENTO-IV/releases/download/actualizacion-incremento4-20261116/I4-Video-testimonial-final-20261116.mp4)
+
+[Versión académica anterior del 15 de noviembre](Entrega-academica/Final-20261115/).
+<!-- /FINAL-20261116 -->
 
 Sistema de soporte informático con tickets, seguimiento SLA, inventario, reportes, manuales y administración. Backend Node.js/Express, base MySQL y frontend HTML/CSS/JavaScript con Alpine.js.
 
